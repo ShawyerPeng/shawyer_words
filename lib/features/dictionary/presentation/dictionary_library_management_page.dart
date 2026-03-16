@@ -4,10 +4,7 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_library_item
 import 'package:shawyer_words/features/dictionary/presentation/dictionary_library_detail_page.dart';
 
 class DictionaryLibraryManagementPage extends StatefulWidget {
-  const DictionaryLibraryManagementPage({
-    super.key,
-    required this.controller,
-  });
+  const DictionaryLibraryManagementPage({super.key, required this.controller});
 
   final DictionaryLibraryController? controller;
 
@@ -39,11 +36,21 @@ class _DictionaryLibraryManagementPageState
     super.dispose();
   }
 
+  Future<void> _showHelpDialog() {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return const _DictionaryLibraryHelpDialog();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
     if (controller == null) {
-      return const _ManagementScaffold(
+      return _ManagementScaffold(
+        onHelpPressed: _showHelpDialog,
         body: SizedBox.shrink(),
       );
     }
@@ -52,6 +59,7 @@ class _DictionaryLibraryManagementPageState
       animation: controller,
       builder: (context, _) {
         return _ManagementScaffold(
+          onHelpPressed: _showHelpDialog,
           body: switch (controller.state.status) {
             DictionaryLibraryStatus.loading => const Center(
               child: CircularProgressIndicator(),
@@ -60,15 +68,15 @@ class _DictionaryLibraryManagementPageState
               child: Text(controller.state.errorMessage ?? '词典库加载失败'),
             ),
             _ => _LibraryListContent(
-                controller: controller,
-                searchController: _searchController,
-                draggingId: _draggingId,
-                onDragStateChanged: (value) {
-                  setState(() {
-                    _draggingId = value;
-                  });
-                },
-              ),
+              controller: controller,
+              searchController: _searchController,
+              draggingId: _draggingId,
+              onDragStateChanged: (value) {
+                setState(() {
+                  _draggingId = value;
+                });
+              },
+            ),
           },
         );
       },
@@ -77,9 +85,10 @@ class _DictionaryLibraryManagementPageState
 }
 
 class _ManagementScaffold extends StatelessWidget {
-  const _ManagementScaffold({required this.body});
+  const _ManagementScaffold({required this.body, required this.onHelpPressed});
 
   final Widget body;
+  final VoidCallback onHelpPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +100,29 @@ class _ManagementScaffold extends StatelessWidget {
         scrolledUnderElevation: 0,
         centerTitle: true,
         title: const Text('所有词典库'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: TextButton(
+              onPressed: onHelpPressed,
+              style: TextButton.styleFrom(
+                backgroundColor: const Color(0xFFECEEF4),
+                foregroundColor: const Color(0xFF545C6B),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              child: const Text(
+                '帮助',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -99,6 +131,179 @@ class _ManagementScaffold extends StatelessWidget {
           child: body,
         ),
       ),
+    );
+  }
+}
+
+class _DictionaryLibraryHelpDialog extends StatelessWidget {
+  const _DictionaryLibraryHelpDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('🤔', style: theme.textTheme.headlineMedium),
+                const SizedBox(width: 10),
+                Text(
+                  '如何导入扩展词典包',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF4A4F59),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '通过互联网或者方格单词社区，您可以获取扩展词典包文件并添加到您的设备。',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                height: 1.8,
+                color: const Color(0xFF5E6470),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '大部分词典只需要一个 .mdx 主词典文件。',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                height: 1.8,
+                color: const Color(0xFF5E6470),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '其它支持文件，可以根据词典功能按需安装。',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                height: 1.8,
+                color: const Color(0xFF5E6470),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F8FB),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Column(
+                children: [
+                  _HelpFileRow(
+                    badgeLabel: '必要',
+                    badgeColor: Color(0xFFE44E91),
+                    text: '.mdx 词典主文件（大部分词典只需此文件）',
+                  ),
+                  SizedBox(height: 10),
+                  _HelpFileRow(
+                    badgeLabel: '可选',
+                    badgeColor: Color(0xFFFF79B6),
+                    text: '.mdd 词典音频、配图、显示样式等资源',
+                  ),
+                  SizedBox(height: 10),
+                  _HelpFileRow(
+                    badgeLabel: '可选',
+                    badgeColor: Color(0xFFFF79B6),
+                    text: '.js 词典自定义功能',
+                  ),
+                  SizedBox(height: 10),
+                  _HelpFileRow(
+                    badgeLabel: '可选',
+                    badgeColor: Color(0xFFFF79B6),
+                    text: '.css 词典自定义显示',
+                  ),
+                  SizedBox(height: 10),
+                  _HelpFileRow(
+                    badgeLabel: '可选',
+                    badgeColor: Color(0xFFFF79B6),
+                    text: '.jpg 或 .png 词典封面...',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Align(
+              alignment: Alignment.center,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFF3F4F8),
+                  foregroundColor: const Color(0xFF343840),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 44,
+                    vertical: 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  '好的',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HelpFileRow extends StatelessWidget {
+  const _HelpFileRow({
+    required this.badgeLabel,
+    required this.badgeColor,
+    required this.text,
+  });
+
+  final String badgeLabel;
+  final Color badgeColor;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: badgeColor,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            badgeLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFFFF5CA8),
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -153,7 +358,8 @@ class _LibraryListContent extends StatelessWidget {
                 _DictionaryRow(
                   item: visibleItems[index],
                   canDrag: true,
-                  onDragStarted: () => onDragStateChanged(visibleItems[index].id),
+                  onDragStarted: () =>
+                      onDragStateChanged(visibleItems[index].id),
                   onDragEnded: () => onDragStateChanged(null),
                   onDetailPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -307,10 +513,7 @@ class _VisibleDropZone extends StatelessWidget {
 }
 
 class _ReorderTarget extends StatelessWidget {
-  const _ReorderTarget({
-    required this.isActive,
-    required this.onAccept,
-  });
+  const _ReorderTarget({required this.isActive, required this.onAccept});
 
   final bool isActive;
   final ValueChanged<String> onAccept;
@@ -331,9 +534,7 @@ class _ReorderTarget extends StatelessWidget {
           height: highlighted ? 20 : 10,
           margin: const EdgeInsets.symmetric(vertical: 2),
           decoration: BoxDecoration(
-            color: highlighted
-                ? const Color(0xFFDAE6FF)
-                : Colors.transparent,
+            color: highlighted ? const Color(0xFFDAE6FF) : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
           ),
         );
@@ -374,9 +575,9 @@ class _DictionaryRow extends StatelessWidget {
             Expanded(
               child: Text(
                 item.name,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
             IconButton(
@@ -412,10 +613,7 @@ class _DictionaryRow extends StatelessWidget {
         color: Colors.transparent,
         child: Opacity(
           opacity: 0.92,
-          child: SizedBox(
-            width: 280,
-            child: buildRow(includeHandle: true),
-          ),
+          child: SizedBox(width: 280, child: buildRow(includeHandle: true)),
         ),
       ),
       child: Stack(
@@ -424,10 +622,7 @@ class _DictionaryRow extends StatelessWidget {
           row,
           const Padding(
             padding: EdgeInsets.only(right: 12),
-            child: Icon(
-              Icons.drag_handle_rounded,
-              color: Color(0xFFCAD0DB),
-            ),
+            child: Icon(Icons.drag_handle_rounded, color: Color(0xFFCAD0DB)),
           ),
         ],
       ),

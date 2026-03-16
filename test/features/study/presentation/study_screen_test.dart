@@ -8,10 +8,57 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_repository.d
 import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
-import 'package:shawyer_words/features/study/presentation/word_card_view.dart';
+import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
+import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repository.dart';
 
 void main() {
-  testWidgets('swiping right records known and advances', (tester) async {
+  testWidgets(
+    'starting study opens rebuilt session flow and records decisions',
+    (tester) async {
+      final studyRepository = _RecordingStudyRepository();
+      final controller = DictionaryController(
+        dictionaryRepository: _FakeDictionaryRepository(),
+        studyRepository: studyRepository,
+      );
+
+      await tester.pumpWidget(
+        ShawyerWordsApp(
+          controller: controller,
+          studyRepository: studyRepository,
+          studyPlanController: StudyPlanController(
+            repository: InMemoryStudyPlanRepository.seeded(),
+          ),
+          pickDictionaryFile: () async => '/tmp/test.zip',
+        ),
+      );
+
+      await tester.tap(find.text('背单词').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('选择词汇表'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('IELTS乱序完整版').first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('开始'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('释义'), findsOneWidget);
+      expect(find.text('认识'), findsOneWidget);
+
+      await tester.tap(find.text('认识'));
+      await tester.pumpAndSettle();
+
+      expect(studyRepository.savedEntryIds, ['1']);
+      expect(studyRepository.savedDecisions, [StudyDecisionType.known]);
+      expect(find.text('brisk'), findsOneWidget);
+    },
+  );
+
+  testWidgets('study session opens word detail from full definition link', (
+    tester,
+  ) async {
     final studyRepository = _RecordingStudyRepository();
     final controller = DictionaryController(
       dictionaryRepository: _FakeDictionaryRepository(),
@@ -21,51 +68,28 @@ void main() {
     await tester.pumpWidget(
       ShawyerWordsApp(
         controller: controller,
-        pickDictionaryFile: () async => '/tmp/test.zip',
-      ),
-    );
-
-    await tester.tap(find.text('背单词').last);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('abandon'), findsOneWidget);
-
-    await tester.drag(find.byType(WordCardView), const Offset(500, 0));
-    await tester.pumpAndSettle();
-
-    expect(studyRepository.savedEntryIds, ['1']);
-    expect(studyRepository.savedDecisions, [StudyDecisionType.known]);
-    expect(find.text('brisk'), findsOneWidget);
-  });
-
-  testWidgets('tapping the study card opens word detail', (tester) async {
-    final controller = DictionaryController(
-      dictionaryRepository: _FakeDictionaryRepository(),
-      studyRepository: _RecordingStudyRepository(),
-    );
-
-    await tester.pumpWidget(
-      ShawyerWordsApp(
-        controller: controller,
-        pickDictionaryFile: () async => '/tmp/test.zip',
+        studyRepository: studyRepository,
+        studyPlanController: StudyPlanController(
+          repository: InMemoryStudyPlanRepository.seeded(),
+        ),
         wordDetailPageBuilder: (word, initialEntry) => Scaffold(
-          body: Center(
-            child: Text('detail:$word:${initialEntry?.word ?? ''}'),
-          ),
+          body: Center(child: Text('detail:$word:${initialEntry?.word ?? ''}')),
         ),
       ),
     );
 
     await tester.tap(find.text('背单词').last);
     await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
+    await tester.tap(find.text('选择词汇表'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('IELTS乱序完整版').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('abandon'));
+    await tester.tap(find.text('释义'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('查看完整释义'));
     await tester.pumpAndSettle();
 
     expect(find.text('detail:abandon:abandon'), findsOneWidget);

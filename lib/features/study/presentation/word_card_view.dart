@@ -5,95 +5,167 @@ class WordCardView extends StatelessWidget {
   const WordCardView({
     super.key,
     required this.entry,
-    this.onTap,
+    required this.definitionVisible,
+    required this.onRevealDefinition,
+    required this.onOpenDetail,
   });
 
   final WordEntry entry;
-  final VoidCallback? onTap;
+  final bool definitionVisible;
+  final VoidCallback onRevealDefinition;
+  final VoidCallback onOpenDetail;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
-        child: Container(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: definitionVisible ? null : onRevealDefinition,
+          borderRadius: BorderRadius.circular(30),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 520),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '释义',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 26),
+                if (definitionVisible && _hasValue(entry.definition))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.definition!,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      TextButton(
+                        onPressed: onOpenDetail,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: const Color(0xFF10C28E),
+                        ),
+                        child: const Text('查看完整释义'),
+                      ),
+                    ],
+                  )
+                else
+                  const _MaskedDefinitionLines(),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        Container(
           constraints: const BoxConstraints(maxWidth: 520),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x19000000),
-                blurRadius: 30,
-                offset: Offset(0, 18),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(30),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(entry.word, style: theme.textTheme.headlineMedium),
-              if (_hasValue(entry.pronunciation)) ...[
-                const SizedBox(height: 8),
-                Text(
-                  entry.pronunciation!,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
+              Text(
+                '例句',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
-              ],
-              if (_hasValue(entry.partOfSpeech)) ...[
-                const SizedBox(height: 16),
-                _SectionLabel(label: entry.partOfSpeech!),
-              ],
-              if (_hasValue(entry.definition)) ...[
-                const SizedBox(height: 12),
-                Text(entry.definition!, style: theme.textTheme.bodyLarge),
-              ],
-              if (_hasValue(entry.exampleSentence)) ...[
-                const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 28),
+              if (_hasValue(entry.exampleSentence))
                 Text(
                   entry.exampleSentence!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontStyle: FontStyle.italic,
+                  style: theme.textTheme.headlineSmall?.copyWith(height: 1.45),
+                )
+              else
+                Text(entry.rawContent, style: theme.textTheme.bodyLarge),
+              if (_hasValue(entry.partOfSpeech)) ...[
+                const SizedBox(height: 26),
+                Text(
+                  entry.partOfSpeech!,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: const Color(0xFF9EA6B7),
                   ),
                 ),
               ],
-              if (!_hasValue(entry.definition) && !_hasValue(entry.exampleSentence))
-                ...[
-                  const SizedBox(height: 16),
-                  Text(entry.rawContent, style: theme.textTheme.bodyMedium),
-                ],
+              const SizedBox(height: 30),
+              const _PageIndicator(),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
   bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.label});
-
-  final String label;
+class _MaskedDefinitionLines extends StatelessWidget {
+  const _MaskedDefinitionLines();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE1F0E8),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label),
+    return Column(
+      children: [
+        Container(
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF4F4F4), Color(0xFFF8F8F8), Color(0xFFF4F4F4)],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          height: 44,
+          width: 290,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF4F4F4), Color(0xFFF8F8F8), Color(0xFFF4F4F4)],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PageIndicator extends StatelessWidget {
+  const _PageIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List<Widget>.generate(6, (index) {
+        final active = index == 0;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: active ? 22 : 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: active ? const Color(0xFF10C28E) : const Color(0xFFE5E8EE),
+            borderRadius: BorderRadius.circular(999),
+          ),
+        );
+      }),
     );
   }
 }

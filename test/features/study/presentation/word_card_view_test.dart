@@ -16,6 +16,9 @@ void main() {
               word: 'abandon',
               rawContent: '<div>fallback dictionary content</div>',
             ),
+            definitionVisible: false,
+            onRevealDefinition: _noop,
+            onOpenDetail: _noop,
           ),
         ),
       ),
@@ -24,8 +27,8 @@ void main() {
     expect(find.text('<div>fallback dictionary content</div>'), findsOneWidget);
   });
 
-  testWidgets('invokes onTap when the card is pressed', (tester) async {
-    var tapped = false;
+  testWidgets('shows detail action after definition is revealed', (tester) async {
+    var openedDetail = false;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -34,17 +37,22 @@ void main() {
             entry: const WordEntry(
               id: '2',
               word: 'brisk',
+              definition: 'quick and energetic',
               rawContent: '<div>brisk</div>',
             ),
-            onTap: () => tapped = true,
+            definitionVisible: true,
+            onRevealDefinition: _noop,
+            onOpenDetail: () => openedDetail = true,
           ),
         ),
       ),
     );
 
-    await tester.tap(find.text('brisk'));
+    await tester.tap(find.text('查看完整释义'));
     await tester.pumpAndSettle();
 
-    expect(tapped, isTrue);
+    expect(openedDetail, isTrue);
   });
 }
+
+void _noop() {}

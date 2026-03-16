@@ -2,22 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
-import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
-import 'package:shawyer_words/features/study/presentation/word_card_view.dart';
-import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 class DictionaryHomePage extends StatelessWidget {
   const DictionaryHomePage({
     super.key,
     required this.controller,
     required this.pickDictionaryFile,
-    required this.wordDetailPageBuilder,
   });
 
   final DictionaryController controller;
   final DictionaryFilePicker pickDictionaryFile;
-  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -31,15 +26,14 @@ class DictionaryHomePage extends StatelessWidget {
               DictionaryStatus.importing => const Center(
                 child: CircularProgressIndicator(),
               ),
-              DictionaryStatus.ready when controller.state.currentEntry != null =>
-                _ReadyState(
-                  controller: controller,
-                  wordDetailPageBuilder: wordDetailPageBuilder,
-                ),
+              DictionaryStatus.ready
+                  when controller.state.currentEntry != null =>
+                _ReadyState(controller: controller),
               DictionaryStatus.failure => _FailureState(
                 onImport: () => _handleImport(context),
                 errorMessage:
-                    controller.state.errorMessage ?? 'Dictionary import failed.',
+                    controller.state.errorMessage ??
+                    'Dictionary import failed.',
               ),
               _ => _EmptyState(onImport: () => _handleImport(context)),
             },
@@ -176,10 +170,7 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _FailureState extends StatelessWidget {
-  const _FailureState({
-    required this.onImport,
-    required this.errorMessage,
-  });
+  const _FailureState({required this.onImport, required this.errorMessage});
 
   final Future<void> Function() onImport;
   final String errorMessage;
@@ -216,10 +207,7 @@ class _FailureState extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              FilledButton(
-                onPressed: onImport,
-                child: const Text('重新选择词库包'),
-              ),
+              FilledButton(onPressed: onImport, child: const Text('重新选择词库包')),
             ],
           ),
         ),
@@ -229,13 +217,9 @@ class _FailureState extends StatelessWidget {
 }
 
 class _ReadyState extends StatelessWidget {
-  const _ReadyState({
-    required this.controller,
-    required this.wordDetailPageBuilder,
-  });
+  const _ReadyState({required this.controller});
 
   final DictionaryController controller;
-  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -315,22 +299,11 @@ class _ReadyState extends StatelessWidget {
                 };
                 controller.recordDecision(decision);
               },
-              child: WordCardView(
-                entry: entry,
-                onTap: () => _openWordDetail(context, entry),
-              ),
+              child: _LegacyWordCard(entry: entry),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Future<void> _openWordDetail(BuildContext context, WordEntry entry) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => wordDetailPageBuilder(entry.word, entry),
-      ),
     );
   }
 }
@@ -356,6 +329,91 @@ class _DecisionBackground extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       alignment: alignment,
       child: Text(label, style: Theme.of(context).textTheme.titleMedium),
+    );
+  }
+}
+
+class _LegacyWordCard extends StatelessWidget {
+  const _LegacyWordCard({required this.entry});
+
+  final dynamic entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 520),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x19000000),
+            blurRadius: 30,
+            offset: Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(entry.word, style: theme.textTheme.headlineMedium),
+          if (_hasValue(entry.pronunciation)) ...[
+            const SizedBox(height: 8),
+            Text(
+              entry.pronunciation!,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+          if (_hasValue(entry.partOfSpeech)) ...[
+            const SizedBox(height: 16),
+            _LegacySectionLabel(label: entry.partOfSpeech!),
+          ],
+          if (_hasValue(entry.definition)) ...[
+            const SizedBox(height: 12),
+            Text(entry.definition!, style: theme.textTheme.bodyLarge),
+          ],
+          if (_hasValue(entry.exampleSentence)) ...[
+            const SizedBox(height: 16),
+            Text(
+              entry.exampleSentence!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+          if (!_hasValue(entry.definition) &&
+              !_hasValue(entry.exampleSentence)) ...[
+            const SizedBox(height: 16),
+            Text(entry.rawContent, style: theme.textTheme.bodyMedium),
+          ],
+        ],
+      ),
+    );
+  }
+
+  bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
+}
+
+class _LegacySectionLabel extends StatelessWidget {
+  const _LegacySectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE1F0E8),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label),
     );
   }
 }

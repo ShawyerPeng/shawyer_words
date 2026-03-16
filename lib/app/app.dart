@@ -8,10 +8,9 @@ import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_ca
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_library_preferences_store.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_library_repository.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_storage.dart';
-import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog.dart';
-import 'package:shawyer_words/features/dictionary/data/platform_dictionary_file_picker.dart';
 import 'package:shawyer_words/features/dictionary/data/platform_dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/bundled_dictionary_registry.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_library_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_storage.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
@@ -19,6 +18,9 @@ import 'package:shawyer_words/features/search/data/dictionary_word_lookup_reposi
 import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
 import 'package:shawyer_words/features/search/data/sample_word_lookup_repository.dart';
 import 'package:shawyer_words/features/study/data/in_memory_study_repository.dart';
+import 'package:shawyer_words/features/study/domain/study_repository.dart';
+import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
+import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repository.dart';
 import 'package:shawyer_words/features/word_detail/application/word_detail_controller.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_entry_lookup_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/platform_word_detail_repository.dart';
@@ -34,6 +36,8 @@ class ShawyerWordsApp extends StatelessWidget {
     DictionaryLibraryController? dictionaryLibraryController,
     DictionaryFilePicker? pickDictionaryFile,
     SearchController? searchController,
+    StudyRepository? studyRepository,
+    StudyPlanController? studyPlanController,
     WordDetailPageBuilder? wordDetailPageBuilder,
   }) {
     final dictionaryCatalog = FileSystemDictionaryCatalog(
@@ -49,11 +53,12 @@ class ShawyerWordsApp extends StatelessWidget {
     final wordKnowledgeRepository = SqliteWordKnowledgeRepository(
       databasePathResolver: _wordKnowledgeDatabasePath,
     );
+    final resolvedStudyRepository = studyRepository ?? InMemoryStudyRepository();
     final resolvedController =
         controller ??
         DictionaryController(
           dictionaryRepository: PlatformDictionaryRepository(),
-          studyRepository: InMemoryStudyRepository(),
+          studyRepository: resolvedStudyRepository,
         );
     final resolvedDictionaryLibraryController =
         dictionaryLibraryController ??
@@ -76,7 +81,6 @@ class ShawyerWordsApp extends StatelessWidget {
 
     return ShawyerWordsApp._(
       key: key,
-      controller: resolvedController,
       dictionaryLibraryController: resolvedDictionaryLibraryController,
       searchController:
           searchController ??
@@ -87,26 +91,27 @@ class ShawyerWordsApp extends StatelessWidget {
             ),
             historyRepository: InMemorySearchHistoryRepository(),
           ),
-      pickDictionaryFile:
-          pickDictionaryFile ??
-          PlatformDictionaryFilePicker().pickDictionaryFile,
+      studyRepository: resolvedStudyRepository,
+      studyPlanController:
+          studyPlanController ??
+          StudyPlanController(repository: InMemoryStudyPlanRepository.seeded()),
       wordDetailPageBuilder: resolvedWordDetailPageBuilder,
     );
   }
 
   const ShawyerWordsApp._({
     super.key,
-    required this.controller,
     required this.dictionaryLibraryController,
-    required this.pickDictionaryFile,
     required this.searchController,
+    required this.studyRepository,
+    required this.studyPlanController,
     required this.wordDetailPageBuilder,
   });
 
-  final DictionaryController controller;
   final DictionaryLibraryController dictionaryLibraryController;
-  final DictionaryFilePicker pickDictionaryFile;
   final SearchController searchController;
+  final StudyRepository studyRepository;
+  final StudyPlanController studyPlanController;
   final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
@@ -119,9 +124,9 @@ class ShawyerWordsApp extends StatelessWidget {
       fontFamily: 'Avenir Next',
       scaffoldBackgroundColor: const Color(0xFFF3F5FA),
       textTheme: ThemeData.light().textTheme.apply(
-            bodyColor: const Color(0xFF1B2030),
-            displayColor: const Color(0xFF1B2030),
-          ),
+        bodyColor: const Color(0xFF1B2030),
+        displayColor: const Color(0xFF1B2030),
+      ),
       useMaterial3: true,
     );
 
@@ -130,10 +135,10 @@ class ShawyerWordsApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: theme,
       home: AppShell(
-        controller: controller,
         dictionaryLibraryController: dictionaryLibraryController,
         searchController: searchController,
-        pickDictionaryFile: pickDictionaryFile,
+        studyPlanController: studyPlanController,
+        studyRepository: studyRepository,
         wordDetailPageBuilder: wordDetailPageBuilder,
       ),
     );
