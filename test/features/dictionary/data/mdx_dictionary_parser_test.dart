@@ -107,6 +107,23 @@ void main() {
     expect(result.entries.single.word, 'brisk');
     expect(result.entries.single.definition, 'quick and energetic');
   });
+
+  test('maps range errors from key listing into a clean unsupported error', () async {
+    final parser = MdxDictionaryParser(
+      readerFactory: (_) => _BrokenKeyListingMdictReader(),
+    );
+
+    await expectLater(
+      () => parser.buildPreview(_testPackage('/tmp/test.mdx')),
+      throwsA(
+        isA<UnsupportedError>().having(
+          (error) => error.message,
+          'message',
+          contains('unsupported or corrupted record offsets'),
+        ),
+      ),
+    );
+  });
 }
 
 DictionaryPackage _testPackage(String mdxPath) {
@@ -196,6 +213,22 @@ class _PartiallyBrokenMdictReader implements MdictReadable {
     }
     return null;
   }
+
+  @override
+  Future<void> close() async {}
+}
+
+class _BrokenKeyListingMdictReader implements MdictReadable {
+  @override
+  Future<void> open() async {}
+
+  @override
+  Future<List<String>> listKeys({int limit = 50}) async {
+    throw RangeError.range(3142786, 7132, 63121, 'end');
+  }
+
+  @override
+  Future<String?> lookup(String word) async => null;
 
   @override
   Future<void> close() async {}

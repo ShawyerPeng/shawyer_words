@@ -7,6 +7,7 @@ import 'package:shawyer_words/features/dictionary/data/bundled_dictionary_regist
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_catalog.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_library_preferences_store.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_library_repository.dart';
+import 'package:shawyer_words/features/dictionary/data/platform_dictionary_file_picker.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_storage.dart';
 import 'package:shawyer_words/features/dictionary/data/platform_dictionary_preview_repository.dart';
 import 'package:shawyer_words/features/dictionary/data/platform_dictionary_repository.dart';
@@ -82,9 +83,14 @@ class ShawyerWordsApp extends StatelessWidget {
           ),
         );
 
+    final resolvedPickDictionaryFile =
+        pickDictionaryFile ?? PlatformDictionaryFilePicker().pickDictionaryFile;
+
     return ShawyerWordsApp._(
       key: key,
+      dictionaryController: resolvedController,
       dictionaryLibraryController: resolvedDictionaryLibraryController,
+      pickDictionaryFile: resolvedPickDictionaryFile,
       searchController:
           searchController ??
           SearchController(
@@ -104,14 +110,18 @@ class ShawyerWordsApp extends StatelessWidget {
 
   const ShawyerWordsApp._({
     super.key,
+    required this.dictionaryController,
     required this.dictionaryLibraryController,
+    required this.pickDictionaryFile,
     required this.searchController,
     required this.studyRepository,
     required this.studyPlanController,
     required this.wordDetailPageBuilder,
   });
 
+  final DictionaryController dictionaryController;
   final DictionaryLibraryController dictionaryLibraryController;
+  final DictionaryFilePicker pickDictionaryFile;
   final SearchController searchController;
   final StudyRepository studyRepository;
   final StudyPlanController studyPlanController;
@@ -138,7 +148,9 @@ class ShawyerWordsApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: theme,
       home: AppShell(
+        dictionaryController: dictionaryController,
         dictionaryLibraryController: dictionaryLibraryController,
+        pickDictionaryFile: pickDictionaryFile,
         searchController: searchController,
         studyPlanController: studyPlanController,
         studyRepository: studyRepository,

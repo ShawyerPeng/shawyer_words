@@ -95,6 +95,22 @@ void main() {
       );
     },
   );
+
+  test('loads a preview entry on demand for detail view', () async {
+    final controller = DictionaryController(
+      dictionaryRepository: _FakeDictionaryRepository(),
+      previewRepository: _FakeDictionaryPreviewRepository(),
+      studyRepository: _FakeStudyRepository(),
+    );
+
+    controller.startImportSession();
+    await controller.addImportSource('/tmp/main.mdx');
+
+    final entry = await controller.loadPreviewEntry('word-42');
+
+    expect(entry?.word, 'word-42');
+    expect(entry?.rawContent, contains('Definition 42'));
+  });
 }
 
 class _FakeDictionaryRepository implements DictionaryRepository {
@@ -176,6 +192,18 @@ class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
   ) async {
     prepareCalls.add(List<String>.from(sourcePaths));
     return _preview();
+  }
+
+  @override
+  Future<WordEntry?> loadEntry({
+    required DictionaryImportPreview preview,
+    required String key,
+  }) async {
+    return WordEntry(
+      id: key,
+      word: key,
+      rawContent: '<div class="definition">Definition ${key.split('-').last}</div>',
+    );
   }
 }
 

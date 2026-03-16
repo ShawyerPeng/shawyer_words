@@ -32,10 +32,7 @@ class DictionaryPackageScanner {
       final normalizedRelativePath = relativePath.replaceAll('\\', '/');
       final lowercasePath = normalizedRelativePath.toLowerCase();
 
-      if (
-        normalizedRelativePath == 'manifest.json' ||
-        normalizedRelativePath.startsWith('cache/')
-      ) {
+      if (_shouldIgnorePath(normalizedRelativePath, lowercasePath)) {
         continue;
       }
 
@@ -106,5 +103,25 @@ class DictionaryPackageScanner {
         .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
         .replaceAll(RegExp(r'^-+|-+$'), '');
     return slug.isEmpty ? 'dictionary' : slug;
+  }
+
+  bool _shouldIgnorePath(String normalizedRelativePath, String lowercasePath) {
+    if (normalizedRelativePath == 'manifest.json' ||
+        normalizedRelativePath.startsWith('cache/')) {
+      return true;
+    }
+
+    if (lowercasePath == '.ds_store' || lowercasePath.endsWith('/.ds_store')) {
+      return true;
+    }
+
+    final pathSegments = normalizedRelativePath.split('/');
+    for (final segment in pathSegments) {
+      if (segment == '__MACOSX' || segment.startsWith('._')) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

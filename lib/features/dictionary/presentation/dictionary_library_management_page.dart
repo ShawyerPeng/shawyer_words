@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_library_controller.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_library_item.dart';
+import 'package:shawyer_words/features/dictionary/presentation/dictionary_import_session_layer.dart';
 import 'package:shawyer_words/features/dictionary/presentation/dictionary_library_detail_page.dart';
 
 class DictionaryLibraryManagementPage extends StatefulWidget {
-  const DictionaryLibraryManagementPage({super.key, required this.controller});
+  const DictionaryLibraryManagementPage({
+    super.key,
+    required this.controller,
+    this.dictionaryController,
+    this.pickDictionaryFile,
+  });
 
   final DictionaryLibraryController? controller;
+  final DictionaryController? dictionaryController;
+  final Future<String?> Function()? pickDictionaryFile;
 
   @override
   State<DictionaryLibraryManagementPage> createState() =>
@@ -16,9 +26,16 @@ class DictionaryLibraryManagementPage extends StatefulWidget {
 class _DictionaryLibraryManagementPageState
     extends State<DictionaryLibraryManagementPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _previewListController = ScrollController();
   String? _draggingId;
+  bool _isPicking = false;
+  bool _isMetadataExpanded = false;
+  bool _isFilesExpanded = false;
+  String _previewSearchQuery = '';
+  int _paginationAnchorPage = 1;
 
   DictionaryLibraryController? get _controller => widget.controller;
+  DictionaryController? get _dictionaryController => widget.dictionaryController;
 
   @override
   void initState() {
@@ -33,6 +50,7 @@ class _DictionaryLibraryManagementPageState
   @override
   void dispose() {
     _searchController.dispose();
+    _previewListController.dispose();
     super.dispose();
   }
 
@@ -45,39 +63,224 @@ class _DictionaryLibraryManagementPageState
     );
   }
 
+  Future<void> _beginInlineImport() async {
+    final dictionaryController = _dictionaryController;
+    if (dictionaryController == null || widget.pickDictionaryFile == null) {
+      return;
+    }
+
+    dictionaryController.startImportSession();
+    setState(() {
+      _isMetadataExpanded = false;
+      _isFilesExpanded = false;
+      _previewSearchQuery = '';
+      _paginationAnchorPage = 1;
+    });
+
+    await _requestImportSource();
+
+    if (!mounted) {
+      return;
+    }
+    if (dictionaryController.state.importSession.stage ==
+        DictionaryImportSessionStage.pickerOverlay) {
+      await dictionaryController.closeImportSession();
+    }
+  }
+
+  Future<void> _requestImportSource() async {
+    final dictionaryController = _dictionaryController;
+    final pickDictionaryFile = widget.pickDictionaryFile;
+    if (dictionaryController == null || pickDictionaryFile == null || _isPicking) {
+      return;
+    }
+
+    setState(() {
+      _isPicking = true;
+    });
+
+    try {
+      final filePath = await _pickDictionaryFile();
+      if (!mounted || filePath == null || filePath.isEmpty) {
+        return;
+      }
+      await dictionaryController.addImportSource(filePath);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPicking = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _pickDictionaryFile() async {
+    try {
+      return await widget.pickDictionaryFile?.call();
+    } on PlatformException {
+      return null;
+    }
+  }
+
+  Future<void> _openPreview() async {
+    final dictionaryController = _dictionaryController;
+    if (dictionaryController == null) {
+      return;
+    }
+
+    await dictionaryController.openImportPreview();
+    final page = dictionaryController.state.importSession.previewPage;
+    if (page != null && mounted) {
+      setState(() {
+        _previewSearchQuery = '';
+        _paginationAnchorPage = page.pageNumber;
+      });
+    }
+  }
+
+  Future<void> _selectPreviewPage(int pageNumber) async {
+    final dictionaryController = _dictionaryController;
+    if (dictionaryController == null) {
+      return;
+    }
+
+    await dictionaryController.goToPreviewPage(pageNumber);
+    if (_previewListController.hasClients) {
+      _previewListController.jumpTo(0);
+    }
+    if (mounted) {
+      setState(() {
+        _previewSearchQuery = '';
+        _paginationAnchorPage = pageNumber;
+      });
+    }
+  }
+
+  void _showPreviousPageGroup() {
+    final preview = _dictionaryController?.state.importSession.preview;
+    if (preview == null) {
+      return;
+    }
+    final pages = preview.pageNumbersForGroup(_paginationAnchorPage);
+    if (pages.isEmpty || pages.first == 1) {
+      return;
+    }
+    setState(() {
+      _paginationAnchorPage = pages.first - 1;
+    });
+  }
+
+  void _showNextPageGroup() {
+    final preview = _dictionaryController?.state.importSession.preview;
+    if (preview == null) {
+      return;
+    }
+    final pages = preview.pageNumbersForGroup(_paginationAnchorPage);
+    if (pages.isEmpty || pages.last >= preview.totalPages) {
+      return;
+    }
+    setState(() {
+      _paginationAnchorPage = pages.last + 1;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
     if (controller == null) {
       return _ManagementScaffold(
         onHelpPressed: _showHelpDialog,
-        body: SizedBox.shrink(),
+        body: const SizedBox.shrink(),
       );
     }
 
     return AnimatedBuilder(
-      animation: controller,
+      animation: Listenable.merge([
+        controller,
+        if (_dictionaryController != null) _dictionaryController!,
+      ]),
       builder: (context, _) {
-        return _ManagementScaffold(
-          onHelpPressed: _showHelpDialog,
-          body: switch (controller.state.status) {
-            DictionaryLibraryStatus.loading => const Center(
-              child: CircularProgressIndicator(),
-            ),
-            DictionaryLibraryStatus.failure => Center(
-              child: Text(controller.state.errorMessage ?? '词典库加载失败'),
-            ),
-            _ => _LibraryListContent(
-              controller: controller,
-              searchController: _searchController,
-              draggingId: _draggingId,
-              onDragStateChanged: (value) {
-                setState(() {
-                  _draggingId = value;
-                });
+        final importController = _dictionaryController;
+        return Stack(
+          children: [
+            _ManagementScaffold(
+              onHelpPressed: _showHelpDialog,
+              body: switch (controller.state.status) {
+                DictionaryLibraryStatus.loading => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                DictionaryLibraryStatus.failure => Center(
+                  child: Text(controller.state.errorMessage ?? '词典库加载失败'),
+                ),
+                _ => _LibraryListContent(
+                  controller: controller,
+                  searchController: _searchController,
+                  draggingId: _draggingId,
+                  onDragStateChanged: (value) {
+                    setState(() {
+                      _draggingId = value;
+                    });
+                  },
+                  onImportPressed: _beginInlineImport,
+                ),
               },
             ),
-          },
+            if (importController != null &&
+                importController.state.importSession.isOpen)
+              DictionaryImportSessionLayer(
+                session: importController.state.importSession,
+                scrollController: _previewListController,
+                metadataExpanded: _isMetadataExpanded,
+                filesExpanded: _isFilesExpanded,
+                searchQuery: _previewSearchQuery,
+                paginationAnchorPage: _paginationAnchorPage,
+                showPickerOverlay: false,
+                onToggleMetadata: () {
+                  setState(() {
+                    _isMetadataExpanded = !_isMetadataExpanded;
+                  });
+                },
+                onToggleFiles: () {
+                  setState(() {
+                    _isFilesExpanded = !_isFilesExpanded;
+                  });
+                },
+                onBack: () {
+                  _previewListController.jumpTo(0);
+                  setState(() {
+                    _previewSearchQuery = '';
+                  });
+                  importController.returnToImportConfirmation();
+                },
+                onClose: () async {
+                  _previewListController.jumpTo(0);
+                  setState(() {
+                    _previewSearchQuery = '';
+                  });
+                  await importController.closeImportSession();
+                  await _controller?.load();
+                },
+                onAddFile: _requestImportSource,
+                onPreview: _openPreview,
+                onInstall: () async {
+                  await importController.installImport();
+                  await _controller?.load();
+                },
+                onSelectEntry: (entry) async {
+                  importController.selectPreviewEntry(entry);
+                },
+                onLoadEntryDetail: (key) =>
+                    importController.loadPreviewEntry(key),
+                onSearchChanged: (value) {
+                  setState(() {
+                    _previewSearchQuery = value;
+                  });
+                },
+                onShowPreviousGroup: _showPreviousPageGroup,
+                onShowNextGroup: _showNextPageGroup,
+                onSelectPage: _selectPreviewPage,
+              ),
+          ],
         );
       },
     );
@@ -314,12 +517,14 @@ class _LibraryListContent extends StatelessWidget {
     required this.searchController,
     required this.draggingId,
     required this.onDragStateChanged,
+    required this.onImportPressed,
   });
 
   final DictionaryLibraryController controller;
   final TextEditingController searchController;
   final String? draggingId;
   final ValueChanged<String?> onDragStateChanged;
+  final Future<void> Function() onImportPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -343,7 +548,24 @@ class _LibraryListContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        _SectionTitle(title: '显示的词库'),
+        _SectionTitle(
+          title: '显示的词库',
+          trailing: TextButton(
+            onPressed: onImportPressed,
+            style: TextButton.styleFrom(
+              backgroundColor: const Color(0xFFECEEF4),
+              foregroundColor: const Color(0xFF545C6B),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            child: const Text(
+              '导入词库',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
         _VisibleDropZone(
           isActive: draggingId != null,
@@ -380,7 +602,7 @@ class _LibraryListContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        _SectionTitle(title: '隐藏的词库'),
+        const _SectionTitle(title: '隐藏的词库'),
         const SizedBox(height: 12),
         DragTarget<String>(
           onWillAcceptWithDetails: (_) => true,
@@ -450,30 +672,37 @@ class _LibraryListContent extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
+  const _SectionTitle({required this.title, this.trailing});
 
   final String title;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Container(
-          height: 28,
-          width: 4,
-          decoration: BoxDecoration(
-            color: const Color(0xFF4A82F0),
-            borderRadius: BorderRadius.circular(999),
-          ),
+        Row(
+          children: [
+            Container(
+              height: 28,
+              width: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A82F0),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: const Color(0xFF7D8496),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: const Color(0xFF7D8496),
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        if (trailing != null) trailing!,
       ],
     );
   }

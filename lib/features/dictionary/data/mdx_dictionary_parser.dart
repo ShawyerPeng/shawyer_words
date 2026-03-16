@@ -10,6 +10,31 @@ import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 
 typedef MdictReaderFactory = MdictReadable Function(String path);
 
+class RecordOffsetData {
+  const RecordOffsetData({
+    required this.keyText,
+    required this.recordBlockOffset,
+    required this.startOffset,
+    required this.endOffset,
+    required this.compressedSize,
+  });
+
+  final String keyText;
+  final int recordBlockOffset;
+  final int startOffset;
+  final int endOffset;
+  final int compressedSize;
+}
+
+abstract class DictReaderBackend {
+  Future<void> initDict();
+  Future<void> close();
+  List<String> search(String key, {int? limit});
+  Stream<RecordOffsetData> readWithOffset();
+  Future<RecordOffsetData?> locate(String key);
+  Future<String?> readOneMdx(RecordOffsetData offset);
+}
+
 abstract class MdictReadable {
   Future<void> open();
   Future<List<String>> listKeys({int limit = 50});
@@ -63,7 +88,15 @@ class MdxDictionaryParser {
     }
 
     try {
-      final keys = await reader.listKeys(limit: 1 << 30);
+      late final List<String> keys;
+      try {
+        keys = await reader.listKeys(limit: 1 << 30);
+      } on RangeError {
+        throw UnsupportedError(
+          'This app could not read any usable entries from the selected MDX file. '
+          'The dictionary may contain unsupported or corrupted record offsets.',
+        );
+      }
       return DictionaryImportPreview(
         sourceRootPath: dictionaryPackage.rootPath,
         title: dictionaryPackage.name,
@@ -207,11 +240,13 @@ class MdxDictionaryParser {
 }
 
 class DictReaderAdapter implements MdictReadable {
-  DictReaderAdapter(String path) : _reader = DictReader(path);
+  DictReaderAdapter(String path) : this.fromBackend(_DictReaderBackend(path));
 
-  final DictReader _reader;
-  final Map<String, RecordOffsetInfo> _offsetByKey =
-      <String, RecordOffsetInfo>{};
+  DictReaderAdapter.fromBackend(DictReaderBackend reader) : _reader = reader;
+
+  final DictReaderBackend _reader;
+  final Map<String, RecordOffsetData> _offsetByKey =
+      <String, RecordOffsetData>{};
 
   @override
   Future<void> open() {
@@ -221,16 +256,12 @@ class DictReaderAdapter implements MdictReadable {
   @override
   Future<List<String>> listKeys({int limit = 50}) async {
     final keys = <String>[];
-    await for (final record in _reader.readWithOffset()) {
-      final key = record.keyText.trim();
-      if (key.isEmpty || _offsetByKey.containsKey(key)) {
+    for (final key in _reader.search('', limit: limit)) {
+      final normalizedKey = key.trim();
+      if (normalizedKey.isEmpty || _offsetByKey.containsKey(normalizedKey)) {
         continue;
       }
-      _offsetByKey[key] = record;
-      keys.add(key);
-      if (keys.length >= limit) {
-        break;
-      }
+      keys.add(normalizedKey);
     }
 
     return keys;
@@ -248,4 +279,62 @@ class DictReaderAdapter implements MdictReadable {
 
   @override
   Future<void> close() => _reader.close();
+}
+
+class _DictReaderBackend implements DictReaderBackend {
+  _DictReaderBackend(String path) : _reader = DictReader(path);
+
+  final DictReader _reader;
+
+  @override
+  Future<void> initDict() => _reader.initDict();
+
+  @override
+  Future<void> close() => _reader.close();
+
+  @override
+  List<String> search(String key, {int? limit}) {
+    return _reader.search(key, limit: limit);
+  }
+
+  @override
+  Stream<RecordOffsetData> readWithOffset() async* {
+    await for (final record in _reader.readWithOffset()) {
+      yield RecordOffsetData(
+        keyText: record.keyText,
+        recordBlockOffset: record.recordBlockOffset,
+        startOffset: record.startOffset,
+        endOffset: record.endOffset,
+        compressedSize: record.compressedSize,
+      );
+    }
+  }
+
+  @override
+  Future<RecordOffsetData?> locate(String key) async {
+    final record = await _reader.locate(key);
+    if (record == null) {
+      return null;
+    }
+    return RecordOffsetData(
+      keyText: record.keyText,
+      recordBlockOffset: record.recordBlockOffset,
+      startOffset: record.startOffset,
+      endOffset: record.endOffset,
+      compressedSize: record.compressedSize,
+    );
+  }
+
+  @override
+  Future<String?> readOneMdx(RecordOffsetData offset) {
+    return _reader.readOneMdx(
+      RecordOffsetInfo(
+        offset.keyText,
+        offset.recordBlockOffset,
+        offset.startOffset,
+        offset.endOffset,
+        offset.compressedSize,
+      ),
+    );
+  }
 }

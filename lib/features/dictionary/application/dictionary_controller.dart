@@ -221,6 +221,14 @@ class DictionaryController extends ChangeNotifier {
     await _loadPreviewPage(preview: preview, pageNumber: pageNumber);
   }
 
+  Future<WordEntry?> loadPreviewEntry(String key) async {
+    final preview = _state.importSession.preview;
+    if (preview == null) {
+      return null;
+    }
+    return _previewRepository.loadEntry(preview: preview, key: key);
+  }
+
   void selectPreviewEntry(WordEntry entry) {
     _state = _state.copyWith(
       importSession: _state.importSession.copyWith(selectedPreviewEntry: entry),

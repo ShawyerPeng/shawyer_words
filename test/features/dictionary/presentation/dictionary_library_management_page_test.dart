@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_import_result.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_library_controller.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_library_item.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_preview_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_library_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_repository.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
+import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/dictionary/presentation/dictionary_library_management_page.dart';
+import 'package:shawyer_words/features/study/domain/study_repository.dart';
 
 void main() {
   testWidgets('renders visible and hidden sections and filters list', (
@@ -73,6 +81,61 @@ void main() {
     expect(find.text('.mdd 词典音频、配图、显示样式等资源'), findsOneWidget);
     expect(find.text('好的'), findsOneWidget);
   });
+
+  testWidgets('shows inline import button under visible section and skips picker overlay', (
+    tester,
+  ) async {
+    final controller = DictionaryLibraryController(
+      repository: _FakeDictionaryLibraryRepository(),
+    );
+    final importController = DictionaryController(
+      dictionaryRepository: _FakeDictionaryRepository(),
+      previewRepository: _FakeDictionaryPreviewRepository(),
+      studyRepository: _FakeStudyRepository(),
+    );
+    final picker = _CountingPicker('/tmp/main.mdx');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DictionaryLibraryManagementPage(
+          controller: controller,
+          dictionaryController: importController,
+          pickDictionaryFile: picker.call,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('显示的词库'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '导入词库'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, '导入词库'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(picker.calls, 1);
+    expect(
+      find.byKey(const ValueKey('dictionary-import-overlay')),
+      findsNothing,
+    );
+    expect(find.text('确认导入'), findsOneWidget);
+    expect(
+      importController.state.importSession.stage,
+      DictionaryImportSessionStage.confirming,
+    );
+  });
+}
+
+class _CountingPicker {
+  _CountingPicker(this.result);
+
+  final String? result;
+  int calls = 0;
+
+  Future<String?> call() async {
+    calls += 1;
+    return result;
+  }
 }
 
 class _FakeDictionaryLibraryRepository implements DictionaryLibraryRepository {
@@ -143,4 +206,92 @@ class _FakeDictionaryLibraryRepository implements DictionaryLibraryRepository {
 
   @override
   Future<void> setVisibility(String id, bool isVisible) async {}
+}
+
+class _FakeDictionaryRepository implements DictionaryRepository {
+  @override
+  Future<DictionaryImportResult> importDictionary(String filePath) async {
+    return const DictionaryImportResult(
+      package: DictionaryPackage(
+        id: 'dict-1',
+        name: 'Test Dictionary Package',
+        type: DictionaryPackageType.imported,
+        rootPath: '/tmp/dictionaries/imported/test-dictionary',
+        mdxPath: '/tmp/dictionaries/imported/test-dictionary/source/main.mdx',
+        mddPaths: <String>[],
+        resourcesPath: '/tmp/dictionaries/imported/test-dictionary/resources',
+        importedAt: '2026-03-16T00:00:00.000Z',
+        entryCount: 1,
+      ),
+      dictionary: DictionarySummary(
+        id: 'dict-1',
+        name: 'Test Dictionary',
+        sourcePath: '/tmp/dictionaries/imported/test-dictionary',
+        importedAt: '2026-03-16T00:00:00.000Z',
+        entryCount: 1,
+      ),
+      entries: [
+        WordEntry(
+          id: '1',
+          word: 'abandon',
+          pronunciation: '/əˈbændən/',
+          partOfSpeech: 'verb',
+          definition: 'to leave behind',
+          exampleSentence: 'They abandon the plan at sunrise.',
+          rawContent: '<p>abandon</p>',
+        ),
+      ],
+    );
+  }
+}
+
+class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
+  @override
+  Future<void> disposePreview(DictionaryImportPreview preview) async {}
+
+  @override
+  Future<DictionaryPreviewPage> loadPage({
+    required DictionaryImportPreview preview,
+    required int pageNumber,
+  }) async {
+    return const DictionaryPreviewPage(pageNumber: 1, entries: []);
+  }
+
+  @override
+  Future<DictionaryImportPreview> preparePreview(
+    List<String> sourcePaths,
+  ) async {
+    return const DictionaryImportPreview(
+      sourceRootPath: '/tmp/session',
+      title: 'Preview',
+      primaryMdxPath: '/tmp/session/main.mdx',
+      metadataText: '',
+      files: [
+        DictionaryPreviewFile(
+          path: '/tmp/session/main.mdx',
+          name: 'main.mdx',
+          kind: DictionaryPreviewFileKind.mdx,
+          isPrimary: true,
+        ),
+      ],
+      entryKeys: [],
+      totalEntries: 0,
+    );
+  }
+
+  @override
+  Future<WordEntry?> loadEntry({
+    required DictionaryImportPreview preview,
+    required String key,
+  }) async {
+    return null;
+  }
+}
+
+class _FakeStudyRepository implements StudyRepository {
+  @override
+  Future<void> saveDecision({
+    required String entryId,
+    required StudyDecisionType decision,
+  }) async {}
 }

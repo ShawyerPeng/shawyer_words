@@ -193,4 +193,12 @@ class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
       totalEntries: 0,
     );
   }
+
+  @override
+  Future<WordEntry?> loadEntry({
+    required DictionaryImportPreview preview,
+    required String key,
+  }) async {
+    return null;
+  }
 }

@@ -6,6 +6,7 @@ import 'package:shawyer_words/features/dictionary/data/mdx_dictionary_parser.dar
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_preview_repository.dart';
+import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 
 class PlatformDictionaryPreviewRepository
     implements DictionaryPreviewRepository {
@@ -47,6 +48,21 @@ class PlatformDictionaryPreviewRepository
       keys,
     );
     return DictionaryPreviewPage(pageNumber: pageNumber, entries: entries);
+  }
+
+  @override
+  Future<WordEntry?> loadEntry({
+    required DictionaryImportPreview preview,
+    required String key,
+  }) async {
+    final entries = await _parser.loadPreviewPage(
+      _packageFromPreview(preview),
+      <String>[key],
+    );
+    if (entries.isEmpty) {
+      return null;
+    }
+    return entries.first;
   }
 
   @override

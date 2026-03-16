@@ -37,6 +37,16 @@ class DictionaryImportPreview {
   final int totalEntries;
   final int pageSize;
 
+  String get metadataDescriptionHtml {
+    final match = RegExp(
+      r'''Description=(?:"([^"]*)"|'([^']*)')''',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(metadataText);
+    final rawValue = match?.group(1) ?? match?.group(2) ?? '';
+    return _decodeHtmlEntities(rawValue).trim();
+  }
+
   int get totalPages {
     if (totalEntries == 0) {
       return 0;
@@ -62,6 +72,28 @@ class DictionaryImportPreview {
     final start = (((normalizedPage - 1) ~/ 10) * 10) + 1;
     final end = (start + 9).clamp(0, totalPages);
     return [for (var page = start; page <= end; page += 1) page];
+  }
+
+  List<String> searchEntryKeysByPrefix(String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return const <String>[];
+    }
+    return [
+      for (final key in entryKeys)
+        if (key.toLowerCase().startsWith(normalizedQuery)) key,
+    ];
+  }
+
+  String _decodeHtmlEntities(String input) {
+    return input
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'")
+        .replaceAll('&amp;', '&')
+        .replaceAll('&nbsp;', ' ');
   }
 }
 

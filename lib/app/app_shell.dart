@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide SearchController;
+import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_library_controller.dart';
 import 'package:shawyer_words/features/dictionary/presentation/dictionary_library_management_page.dart';
 import 'package:shawyer_words/features/home/presentation/home_dashboard_page.dart';
@@ -16,14 +17,18 @@ enum _ShellTab { phraseBook, home, vocabulary }
 class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
+    required this.dictionaryController,
     required this.dictionaryLibraryController,
+    required this.pickDictionaryFile,
     required this.searchController,
     required this.studyPlanController,
     required this.studyRepository,
     required this.wordDetailPageBuilder,
   });
 
+  final DictionaryController dictionaryController;
   final DictionaryLibraryController dictionaryLibraryController;
+  final Future<String?> Function() pickDictionaryFile;
   final SearchController searchController;
   final StudyPlanController studyPlanController;
   final StudyRepository studyRepository;
@@ -43,6 +48,8 @@ class _AppShellState extends State<AppShell> {
           dictionaryLibraryManagementPageBuilder: (_) =>
               DictionaryLibraryManagementPage(
                 controller: widget.dictionaryLibraryController,
+                dictionaryController: widget.dictionaryController,
+                pickDictionaryFile: widget.pickDictionaryFile,
               ),
         ),
       ),

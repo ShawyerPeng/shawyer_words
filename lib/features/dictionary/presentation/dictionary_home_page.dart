@@ -4,6 +4,7 @@ import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
+import 'package:shawyer_words/features/dictionary/presentation/dictionary_import_session_layer.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 
 class DictionaryHomePage extends StatefulWidget {
@@ -11,10 +12,12 @@ class DictionaryHomePage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.pickDictionaryFile,
+    this.startImportOnFirstFrame = false,
   });
 
   final DictionaryController controller;
   final DictionaryFilePicker pickDictionaryFile;
+  final bool startImportOnFirstFrame;
 
   @override
   State<DictionaryHomePage> createState() => _DictionaryHomePageState();
@@ -24,9 +27,23 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
   final ScrollController _previewListController = ScrollController();
   bool _isPicking = false;
   bool _isMetadataExpanded = false;
+  bool _isFilesExpanded = false;
+  String _previewSearchQuery = '';
   int _paginationAnchorPage = 1;
 
   DictionaryController get _controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.startImportOnFirstFrame) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _beginImportSession();
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -62,68 +79,63 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
                 },
               ),
             ),
-            if (session.isOpen) ...[
-              _ImportOverlay(
-                showAddButton:
-                    session.stage == DictionaryImportSessionStage.pickerOverlay,
+            if (session.isOpen)
+              DictionaryImportSessionLayer(
+                session: session,
+                scrollController: _previewListController,
+                metadataExpanded: _isMetadataExpanded,
+                filesExpanded: _isFilesExpanded,
+                searchQuery: _previewSearchQuery,
+                paginationAnchorPage: _paginationAnchorPage,
+                onToggleMetadata: () {
+                  setState(() {
+                    _isMetadataExpanded = !_isMetadataExpanded;
+                  });
+                },
+                onToggleFiles: () {
+                  setState(() {
+                    _isFilesExpanded = !_isFilesExpanded;
+                  });
+                },
+                onBack: () {
+                  _previewListController.jumpTo(0);
+                  setState(() {
+                    _previewSearchQuery = '';
+                  });
+                  _controller.returnToImportConfirmation();
+                },
+                onClose: () async {
+                  _previewListController.jumpTo(0);
+                  setState(() {
+                    _previewSearchQuery = '';
+                  });
+                  await _controller.closeImportSession();
+                },
                 onAddFile: _requestImportSource,
-                onClose: _controller.closeImportSession,
-              ),
-              if (session.stage == DictionaryImportSessionStage.confirming ||
-                  session.stage == DictionaryImportSessionStage.installing)
-                Center(
-                  child: _ConfirmImportCard(
-                    session: session,
-                    onAddFile: _requestImportSource,
-                    onPreview: () async {
-                      await _controller.openImportPreview();
-                      final page = _controller.state.importSession.previewPage;
-                      if (page != null) {
-                        setState(() {
-                          _paginationAnchorPage = page.pageNumber;
-                        });
-                      }
-                    },
-                    onInstall: _controller.installImport,
-                  ),
-                ),
-              if (session.stage == DictionaryImportSessionStage.previewing &&
-                  session.preview != null &&
-                  session.previewPage != null)
-                _PreviewPanel(
-                  session: session,
-                  scrollController: _previewListController,
-                  metadataExpanded: _isMetadataExpanded,
-                  paginationAnchorPage: _paginationAnchorPage,
-                  onToggleMetadata: () {
+                onPreview: () async {
+                  await _controller.openImportPreview();
+                  final page = _controller.state.importSession.previewPage;
+                  if (page != null) {
                     setState(() {
-                      _isMetadataExpanded = !_isMetadataExpanded;
+                      _previewSearchQuery = '';
+                      _paginationAnchorPage = page.pageNumber;
                     });
-                  },
-                  onBack: () {
-                    _previewListController.jumpTo(0);
-                    _controller.returnToImportConfirmation();
-                  },
-                  onClose: () async {
-                    _previewListController.jumpTo(0);
-                    await _controller.closeImportSession();
-                  },
-                  onAddFile: _requestImportSource,
-                  onInstall: _controller.installImport,
-                  onSelectEntry: _controller.selectPreviewEntry,
-                  onShowPreviousGroup: _showPreviousPageGroup,
-                  onShowNextGroup: _showNextPageGroup,
-                  onSelectPage: _selectPreviewPage,
-                ),
-              if (session.stage == DictionaryImportSessionStage.failure)
-                Center(
-                  child: _ImportErrorCard(
-                    errorMessage: session.errorMessage ?? '词库预览失败，请重新选择文件。',
-                    onAddFile: _requestImportSource,
-                    onClose: _controller.closeImportSession,
-                  ),
-                ),
-            ],
+                  }
+                },
+                onInstall: _controller.installImport,
+                onSelectEntry: (entry) async {
+                  _controller.selectPreviewEntry(entry);
+                },
+                onLoadEntryDetail: (key) => _controller.loadPreviewEntry(key),
+                onSearchChanged: (value) {
+                  setState(() {
+                    _previewSearchQuery = value;
+                  });
+                },
+                onShowPreviousGroup: _showPreviousPageGroup,
+                onShowNextGroup: _showNextPageGroup,
+                onSelectPage: _selectPreviewPage,
+              ),
           ],
         );
       },
@@ -134,6 +146,8 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
     _controller.startImportSession();
     setState(() {
       _isMetadataExpanded = false;
+      _isFilesExpanded = false;
+      _previewSearchQuery = '';
       _paginationAnchorPage = 1;
     });
     await _requestImportSource();
@@ -184,6 +198,7 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
       _previewListController.jumpTo(0);
     }
     setState(() {
+      _previewSearchQuery = '';
       _paginationAnchorPage = pageNumber;
     });
   }

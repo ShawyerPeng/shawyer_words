@@ -48,4 +48,22 @@ void main() {
     expect(preview.pageNumbersForGroup(10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(preview.pageNumbersForGroup(11), [11, 12]);
   });
+
+  test('extracts description html from dictionary metadata xml', () {
+    const preview = DictionaryImportPreview(
+      sourceRootPath: '/tmp/session',
+      title: 'Oxford Starter',
+      primaryMdxPath: '/tmp/session/main.mdx',
+      metadataText:
+          '<Dictionary Title="Oxford Starter" Description="Line 1&lt;br/&gt;&lt;b&gt;Line 2&lt;/b&gt;" />',
+      files: [],
+      entryKeys: [],
+      totalEntries: 0,
+    );
+
+    expect(
+      preview.metadataDescriptionHtml,
+      'Line 1<br/><b>Line 2</b>',
+    );
+  });
 }

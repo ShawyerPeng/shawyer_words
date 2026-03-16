@@ -71,6 +71,21 @@ void main() {
     );
   });
 
+  test('ignores Apple metadata files when importing a zip archive', () async {
+    final archiveFile = File('${tempRoot.path}/archive-with-macos-metadata.zip');
+    final archive = Archive()
+      ..add(ArchiveFile.string('archive/main.mdx', 'mdx'))
+      ..add(ArchiveFile.string('__MACOSX/archive/._main.mdx', 'metadata'))
+      ..add(ArchiveFile.string('archive/main.mdd', 'mdd'));
+    await archiveFile.writeAsBytes(ZipEncoder().encode(archive));
+
+    final package = await importer.importPackage(archiveFile.path);
+
+    expect(package.mdxPath, endsWith('/source/main.mdx'));
+    expect(File(package.mdxPath).existsSync(), isTrue);
+    expect(package.mddPaths, hasLength(1));
+  });
+
   test('imports a single mdx file as a minimal managed package', () async {
     final mdxFile = File('${tempRoot.path}/single.mdx');
     await mdxFile.writeAsString('mdx');

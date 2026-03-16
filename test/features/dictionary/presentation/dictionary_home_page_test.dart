@@ -85,30 +85,203 @@ void main() {
       expect(find.text('第 1 / 12 页'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('dictionary-preview-page-10')),
-        findsOneWidget,
+        findsNothing,
       );
 
-      await tester.tap(
-        find.byKey(const ValueKey('dictionary-preview-next-group')),
-      );
-      await tester.pump();
+      for (var index = 0; index < 6; index += 1) {
+        await tester.drag(
+          find.byType(Scrollable).last,
+          const Offset(0, -4000),
+        );
+        await tester.pump();
+      }
 
       expect(
-        find.byKey(const ValueKey('dictionary-preview-page-11')),
+        find.byKey(const ValueKey('dictionary-preview-page-10')),
         findsOneWidget,
       );
 
-      await tester.tap(
-        find.byKey(const ValueKey('dictionary-preview-page-11')),
-      );
-      await tester.pump();
+      await controller.goToPreviewPage(10);
       await tester.pump();
 
-      expect(find.text('第 11 / 12 页'), findsOneWidget);
-      expect(find.text('word-10001'), findsWidgets);
-      expect(find.text('Definition for word-10001'), findsOneWidget);
+      expect(find.text('第 10 / 12 页'), findsOneWidget);
+      expect(
+        controller.state.importSession.selectedPreviewEntry?.word,
+        'word-9001',
+      );
     },
   );
+
+  testWidgets('keeps preview usable on small screens with long dictionary titles', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final controller = DictionaryController(
+      dictionaryRepository: _FakeDictionaryRepository(),
+      previewRepository: _FakeDictionaryPreviewRepository(
+        title: '#Collins COBUILD Advanced Learner\'s English Dictionary',
+        metadataText: List<String>.filled(
+          12,
+          '<Dictionary GeneratedByEngineVersion="2.0" Description="Long preview metadata" />',
+        ).join(' '),
+        files: const [
+          DictionaryPreviewFile(
+            path: '/tmp/session/main.mdx',
+            name: '#Collins COBUILD Advanced Learner\'s English Dictionary.mdx',
+            kind: DictionaryPreviewFileKind.mdx,
+            isPrimary: true,
+          ),
+          DictionaryPreviewFile(
+            path: '/tmp/session/main.mdd',
+            name: '#Collins COBUILD Advanced Learner\'s English Dictionary.mdd',
+            kind: DictionaryPreviewFileKind.mdd,
+          ),
+          DictionaryPreviewFile(
+            path: '/tmp/session/switch.js',
+            name: 'colcobuildoverhaul_switch.js',
+            kind: DictionaryPreviewFileKind.js,
+          ),
+        ],
+      ),
+      studyRepository: _FakeStudyRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DictionaryHomePage(
+          controller: controller,
+          pickDictionaryFile: () async => '/tmp/main.mdx',
+        ),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.widgetWithText(FilledButton, '预览'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const ValueKey('dictionary-preview-scroll-view')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows description with expand and collapse, keeps files collapsed, and searches entry prefixes across the whole preview', (
+    tester,
+  ) async {
+    final controller = DictionaryController(
+      dictionaryRepository: _FakeDictionaryRepository(),
+      previewRepository: _FakeDictionaryPreviewRepository(
+        metadataText:
+            '<Dictionary Title="Oxford Starter" Description="Line 1&lt;br/&gt;&lt;b&gt;Line 2&lt;/b&gt; ${'Extra preview content. ' * 20}" />',
+      ),
+      studyRepository: _FakeStudyRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DictionaryHomePage(
+          controller: controller,
+          pickDictionaryFile: () async => '/tmp/main.mdx',
+        ),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, '预览'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('更多'), findsOneWidget);
+    expect(find.text('收起'), findsNothing);
+    expect(find.text('main.mdd'), findsNothing);
+
+    await tester.tap(find.text('更多'));
+    await tester.pump();
+
+    expect(find.text('收起'), findsOneWidget);
+    expect(find.textContaining('Line 1'), findsWidgets);
+    expect(find.textContaining('Line 2'), findsWidgets);
+
+    await tester.tap(find.text('文件信息'));
+    await tester.pump();
+
+    expect(find.text('main.mdd'), findsOneWidget);
+
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -1200));
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('dictionary-preview-search-field')),
+      'word-10001',
+    );
+    await tester.pump();
+
+    expect(find.text('搜索结果 1 项'), findsOneWidget);
+    expect(find.text('word-10001'), findsWidgets);
+    expect(find.text('第 1 / 12 页'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('dictionary-preview-search-field')),
+      '',
+    );
+    await tester.pump();
+
+    expect(find.text('第 1 / 12 页'), findsOneWidget);
+  });
+
+  testWidgets('preview entry rows show only the word and open detail through chevron', (
+    tester,
+  ) async {
+    final controller = DictionaryController(
+      dictionaryRepository: _FakeDictionaryRepository(),
+      previewRepository: _FakeDictionaryPreviewRepository(),
+      studyRepository: _FakeStudyRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DictionaryHomePage(
+          controller: controller,
+          pickDictionaryFile: () async => '/tmp/main.mdx',
+        ),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, '预览'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('word-1'), findsWidgets);
+    expect(find.text('Definition for word-1'), findsNothing);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('dictionary-preview-entry-detail-word-1')),
+    );
+    await tester.pump();
+
+    await tester.tap(
+      find.byKey(const ValueKey('dictionary-preview-entry-detail-word-1')),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('word-1'), findsWidgets);
+    expect(find.text('Definition for word-1'), findsOneWidget);
+  });
 
   testWidgets('picker errors are shown as a friendly message', (tester) async {
     final controller = DictionaryController(
@@ -197,6 +370,34 @@ class _FakeDictionaryRepository implements DictionaryRepository {
 }
 
 class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
+  _FakeDictionaryPreviewRepository({
+    this.title = 'Oxford Starter',
+    this.metadataText =
+        '<Dictionary Title="Oxford Starter" Description="Preview metadata" />',
+    this.files = const [
+      DictionaryPreviewFile(
+        path: '/tmp/session/main.mdx',
+        name: 'main.mdx',
+        kind: DictionaryPreviewFileKind.mdx,
+        isPrimary: true,
+      ),
+      DictionaryPreviewFile(
+        path: '/tmp/session/main.mdd',
+        name: 'main.mdd',
+        kind: DictionaryPreviewFileKind.mdd,
+      ),
+      DictionaryPreviewFile(
+        path: '/tmp/session/style.css',
+        name: 'style.css',
+        kind: DictionaryPreviewFileKind.css,
+      ),
+    ],
+  });
+
+  final String title;
+  final String metadataText;
+  final List<DictionaryPreviewFile> files;
+
   @override
   Future<void> disposePreview(DictionaryImportPreview preview) async {}
 
@@ -207,7 +408,8 @@ class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
   }) async {
     final start = (pageNumber - 1) * preview.pageSize;
     final end = (start + preview.pageSize).clamp(0, preview.totalEntries);
-    final entries = List<WordEntry>.generate(end - start, (index) {
+    final visibleCount = (end - start).clamp(0, 4);
+    final entries = List<WordEntry>.generate(visibleCount, (index) {
       final entryNumber = start + index + 1;
       return WordEntry(
         id: 'entry-$entryNumber',
@@ -226,32 +428,28 @@ class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
   Future<DictionaryImportPreview> preparePreview(
     List<String> sourcePaths,
   ) async {
-    return const DictionaryImportPreview(
+    final keys = List<String>.generate(12000, (index) => 'word-${index + 1}');
+    return DictionaryImportPreview(
       sourceRootPath: '/tmp/session',
-      title: 'Oxford Starter',
+      title: title,
       primaryMdxPath: '/tmp/session/main.mdx',
-      metadataText:
-          '<Dictionary Title="Oxford Starter" Description="Preview metadata" />',
-      files: [
-        DictionaryPreviewFile(
-          path: '/tmp/session/main.mdx',
-          name: 'main.mdx',
-          kind: DictionaryPreviewFileKind.mdx,
-          isPrimary: true,
-        ),
-        DictionaryPreviewFile(
-          path: '/tmp/session/main.mdd',
-          name: 'main.mdd',
-          kind: DictionaryPreviewFileKind.mdd,
-        ),
-        DictionaryPreviewFile(
-          path: '/tmp/session/style.css',
-          name: 'style.css',
-          kind: DictionaryPreviewFileKind.css,
-        ),
-      ],
-      entryKeys: [],
+      metadataText: metadataText,
+      files: files,
+      entryKeys: keys,
       totalEntries: 12000,
+    );
+  }
+
+  @override
+  Future<WordEntry?> loadEntry({
+    required DictionaryImportPreview preview,
+    required String key,
+  }) async {
+    return WordEntry(
+      id: key,
+      word: key,
+      rawContent:
+          '<div class="entry"><div class="definition">Definition for $key</div></div>',
     );
   }
 }
