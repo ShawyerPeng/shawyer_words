@@ -1,0 +1,10 @@
+name: parser_backend_benchmark
+publish_to: none
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  dict_reader: ^1.6.0
+  mdict_flutter: ^0.1.1
+  mdict_reader: ^1.1.0
