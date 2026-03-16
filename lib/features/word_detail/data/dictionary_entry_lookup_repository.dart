@@ -119,6 +119,59 @@ class DictionaryEntryLookupRepository {
     final json = jsonDecode(
       await manifestFile.readAsString(),
     ) as Map<String, Object?>;
-    return DictionaryManifest.fromJson(json).toPackage();
+    final manifest = DictionaryManifest.fromJson(json);
+    return DictionaryPackage(
+      id: manifest.id,
+      name: manifest.name,
+      type: manifest.type,
+      rootPath: rootPath,
+      mdxPath: _resolvePath(
+        rootPath: rootPath,
+        manifestPath: manifest.mdxPath,
+      ),
+      mddPaths: manifest.mddPaths
+          .map(
+            (path) => _resolvePath(
+              rootPath: rootPath,
+              manifestPath: path,
+            ),
+          )
+          .toList(growable: false),
+      resourcesPath: _resolvePath(
+        rootPath: rootPath,
+        manifestPath: manifest.resourcesPath,
+      ),
+      importedAt: manifest.importedAt,
+      entryCount: manifest.entryCount,
+      version: manifest.version,
+      category: manifest.category,
+      dictionaryAttribute: manifest.dictionaryAttribute,
+      fileSizeBytes: manifest.fileSizeBytes,
+    );
+  }
+
+  String _resolvePath({
+    required String rootPath,
+    required String manifestPath,
+  }) {
+    final normalized = manifestPath.replaceAll('\\', '/');
+    if (!normalized.startsWith('/')) {
+      return '$rootPath/$normalized';
+    }
+
+    final marker = '/source/';
+    final sourceIndex = normalized.lastIndexOf(marker);
+    if (sourceIndex >= 0) {
+      return '$rootPath/source/${normalized.substring(sourceIndex + marker.length)}';
+    }
+
+    final resourcesMarker = '/resources';
+    final resourcesIndex = normalized.lastIndexOf(resourcesMarker);
+    if (resourcesIndex >= 0) {
+      final suffix = normalized.substring(resourcesIndex + resourcesMarker.length);
+      return '$rootPath/resources$suffix';
+    }
+
+    return '$rootPath/${normalized.split('/').last}';
   }
 }

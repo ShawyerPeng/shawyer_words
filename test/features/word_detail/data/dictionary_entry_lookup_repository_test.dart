@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_catalog.dart';
 import 'package:shawyer_words/features/dictionary/data/mdx_dictionary_parser.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog_entry.dart';
@@ -107,6 +108,39 @@ void main() {
       expect(details.last.dictionaryId, 'broken');
       expect(details.last.errorMessage, contains('reader failed'));
     });
+
+    test('uses current package directory when manifest stores stale absolute paths', () async {
+      final package = await _writePackage(
+        '${tempRoot.path}/imported',
+        id: 'stale',
+        name: 'Stale',
+        manifestRootPath: '/var/mobile/Containers/Data/Application/OLD-ID/Library/Application Support/dictionaries/imported/stale',
+      );
+      final recordedPaths = <String>[];
+      final repository = DictionaryEntryLookupRepository(
+        libraryRepository: _FakeDictionaryLibraryRepository(
+          items: <DictionaryLibraryItem>[
+            _libraryItem(package, isVisible: true, sortIndex: 0),
+          ],
+        ),
+        catalog: FileSystemDictionaryCatalog(rootPath: tempRoot.path),
+        readerFactory: (path) => _LookupReader(
+          path: path,
+          onLookup: (_) {
+            recordedPaths.add(path);
+            return '<div class="definition">resolved from current directory</div>';
+          },
+        ),
+      );
+
+      final details = await repository.lookupAcrossVisibleDictionaries('abandon');
+
+      expect(details, hasLength(1));
+      expect(details.single.errorMessage, isNull);
+      expect(recordedPaths, <String>[
+        '${tempRoot.path}/imported/stale/source/stale.mdx',
+      ]);
+    });
   });
 
   group('PlatformWordDetailRepository', () {
@@ -174,6 +208,7 @@ Future<DictionaryPackage> _writePackage(
   String rootPath, {
   required String id,
   required String name,
+  String? manifestRootPath,
 }) async {
   final packageRoot = Directory('$rootPath/$id');
   await packageRoot.create(recursive: true);
@@ -185,10 +220,14 @@ Future<DictionaryPackage> _writePackage(
     id: id,
     name: name,
     type: DictionaryPackageType.imported,
-    rootPath: packageRoot.path,
-    mdxPath: mdxPath,
+    rootPath: manifestRootPath ?? packageRoot.path,
+    mdxPath: manifestRootPath == null
+        ? mdxPath
+        : '$manifestRootPath/source/$id.mdx',
     mddPaths: const <String>[],
-    resourcesPath: '${packageRoot.path}/resources',
+    resourcesPath: manifestRootPath == null
+        ? '${packageRoot.path}/resources'
+        : '$manifestRootPath/resources',
     importedAt: '2026-03-16T00:00:00.000Z',
   );
   await File('${packageRoot.path}/manifest.json').writeAsString(

@@ -58,7 +58,7 @@ class FileSystemDictionaryCatalog implements DictionaryCatalog {
           id: manifest.id,
           name: manifest.name,
           type: manifest.type,
-          rootPath: manifest.rootPath,
+          rootPath: entity.path,
           importedAt: manifest.importedAt,
           entryCount: manifest.entryCount,
           version: manifest.version,
