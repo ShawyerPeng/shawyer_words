@@ -51,6 +51,28 @@ void main() {
     expect(find.text('显示该词库'), findsOneWidget);
     expect(find.text('自动展开'), findsOneWidget);
   });
+
+  testWidgets('shows help dialog from app bar action', (tester) async {
+    final controller = DictionaryLibraryController(
+      repository: _FakeDictionaryLibraryRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DictionaryLibraryManagementPage(controller: controller),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('帮助'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('如何导入扩展词典包'), findsOneWidget);
+    expect(find.text('通过互联网或者方格单词社区，您可以获取扩展词典包文件并添加到您的设备。'), findsOneWidget);
+    expect(find.text('.mdx 词典主文件（大部分词典只需此文件）'), findsOneWidget);
+    expect(find.text('.mdd 词典音频、配图、显示样式等资源'), findsOneWidget);
+    expect(find.text('好的'), findsOneWidget);
+  });
 }
 
 class _FakeDictionaryLibraryRepository implements DictionaryLibraryRepository {
