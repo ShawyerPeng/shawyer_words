@@ -7,11 +7,13 @@ class WordCardView extends StatelessWidget {
     required this.entry,
     required this.definitionVisible,
     required this.onRevealDefinition,
+    required this.onOpenDetail,
   });
 
   final WordEntry entry;
   final bool definitionVisible;
   final VoidCallback onRevealDefinition;
+  final VoidCallback onOpenDetail;
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +43,25 @@ class WordCardView extends StatelessWidget {
                 ),
                 const SizedBox(height: 26),
                 if (definitionVisible && _hasValue(entry.definition))
-                  Text(
-                    entry.definition!,
-                    style: theme.textTheme.headlineSmall?.copyWith(height: 1.5),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.definition!,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      TextButton(
+                        onPressed: onOpenDetail,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: const Color(0xFF10C28E),
+                        ),
+                        child: const Text('查看完整释义'),
+                      ),
+                    ],
                   )
                 else
                   const _MaskedDefinitionLines(),

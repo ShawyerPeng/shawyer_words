@@ -3,6 +3,7 @@ import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/application/study_session_controller.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study/presentation/word_card_view.dart';
+import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 class StudySessionPage extends StatelessWidget {
   const StudySessionPage({super.key, required this.controller});
@@ -102,6 +103,8 @@ class StudySessionPage extends StatelessWidget {
                               entry: entry,
                               definitionVisible: state.definitionRevealed,
                               onRevealDefinition: controller.revealDefinition,
+                              onOpenDetail: () =>
+                                  _openWordDetail(context, entry),
                             ),
                           ),
                         ),
@@ -131,6 +134,12 @@ class StudySessionPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _openWordDetail(BuildContext context, WordEntry entry) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => WordDetailPage(entry: entry)),
     );
   }
 }
