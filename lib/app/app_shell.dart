@@ -9,6 +9,7 @@ import 'package:shawyer_words/features/shared/presentation/placeholder_section_p
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/presentation/study_home_page.dart';
+import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 enum _ShellTab { phraseBook, home, vocabulary }
 
@@ -19,12 +20,14 @@ class AppShell extends StatefulWidget {
     required this.searchController,
     required this.studyPlanController,
     required this.studyRepository,
+    required this.wordDetailPageBuilder,
   });
 
   final DictionaryLibraryController dictionaryLibraryController;
   final SearchController searchController;
   final StudyPlanController studyPlanController;
   final StudyRepository studyRepository;
+  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -50,7 +53,10 @@ class _AppShellState extends State<AppShell> {
     widget.searchController.updateQuery('');
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => SearchPage(controller: widget.searchController),
+        builder: (_) => SearchPage(
+          controller: widget.searchController,
+          wordDetailPageBuilder: widget.wordDetailPageBuilder,
+        ),
       ),
     );
   }
@@ -67,6 +73,7 @@ class _AppShellState extends State<AppShell> {
       StudyHomePage(
         controller: widget.studyPlanController,
         studyRepository: widget.studyRepository,
+        wordDetailPageBuilder: widget.wordDetailPageBuilder,
       ),
     ];
 

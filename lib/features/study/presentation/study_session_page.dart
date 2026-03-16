@@ -6,12 +6,17 @@ import 'package:shawyer_words/features/study/presentation/word_card_view.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 class StudySessionPage extends StatelessWidget {
-  const StudySessionPage({super.key, required this.controller});
+  const StudySessionPage({
+    super.key,
+    required this.controller,
+    required this.wordDetailPageBuilder,
+  });
 
   factory StudySessionPage.forBook({
     Key? key,
     required List<WordEntry> entries,
     required StudyRepository studyRepository,
+    required WordDetailPageBuilder wordDetailPageBuilder,
   }) {
     return StudySessionPage(
       key: key,
@@ -19,10 +24,12 @@ class StudySessionPage extends StatelessWidget {
         entries: entries,
         studyRepository: studyRepository,
       ),
+      wordDetailPageBuilder: wordDetailPageBuilder,
     );
   }
 
   final StudySessionController controller;
+  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +146,9 @@ class StudySessionPage extends StatelessWidget {
 
   Future<void> _openWordDetail(BuildContext context, WordEntry entry) async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => WordDetailPage(entry: entry)),
+      MaterialPageRoute<void>(
+        builder: (_) => wordDetailPageBuilder(entry.word, entry),
+      ),
     );
   }
 }

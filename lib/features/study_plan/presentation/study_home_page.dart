@@ -5,16 +5,19 @@ import 'package:shawyer_words/features/study_plan/application/study_plan_control
 import 'package:shawyer_words/features/study_plan/domain/official_vocabulary_book.dart';
 import 'package:shawyer_words/features/study_plan/domain/study_plan_models.dart';
 import 'package:shawyer_words/features/study_plan/presentation/vocabulary_book_picker_page.dart';
+import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 class StudyHomePage extends StatefulWidget {
   const StudyHomePage({
     super.key,
     required this.controller,
     required this.studyRepository,
+    required this.wordDetailPageBuilder,
   });
 
   final StudyPlanController controller;
   final StudyRepository studyRepository;
+  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   State<StudyHomePage> createState() => _StudyHomePageState();
@@ -46,6 +49,7 @@ class _StudyHomePageState extends State<StudyHomePage> {
             StudyPlanStatus.ready => _StudyHomeContent(
               controller: widget.controller,
               studyRepository: widget.studyRepository,
+              wordDetailPageBuilder: widget.wordDetailPageBuilder,
             ),
           },
         );
@@ -58,10 +62,12 @@ class _StudyHomeContent extends StatelessWidget {
   const _StudyHomeContent({
     required this.controller,
     required this.studyRepository,
+    required this.wordDetailPageBuilder,
   });
 
   final StudyPlanController controller;
   final StudyRepository studyRepository;
+  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +150,7 @@ class _StudyHomeContent extends StatelessWidget {
         builder: (_) => StudySessionPage.forBook(
           entries: book.entries,
           studyRepository: studyRepository,
+          wordDetailPageBuilder: wordDetailPageBuilder,
         ),
       ),
     );

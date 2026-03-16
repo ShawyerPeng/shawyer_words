@@ -26,6 +26,33 @@ void main() {
 
     expect(find.text('<div>fallback dictionary content</div>'), findsOneWidget);
   });
+
+  testWidgets('shows detail action after definition is revealed', (tester) async {
+    var openedDetail = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WordCardView(
+            entry: const WordEntry(
+              id: '2',
+              word: 'brisk',
+              definition: 'quick and energetic',
+              rawContent: '<div>brisk</div>',
+            ),
+            definitionVisible: true,
+            onRevealDefinition: _noop,
+            onOpenDetail: () => openedDetail = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('查看完整释义'));
+    await tester.pumpAndSettle();
+
+    expect(openedDetail, isTrue);
+  });
 }
 
 void _noop() {}

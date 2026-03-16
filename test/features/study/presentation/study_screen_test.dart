@@ -55,6 +55,45 @@ void main() {
       expect(find.text('brisk'), findsOneWidget);
     },
   );
+
+  testWidgets('study session opens word detail from full definition link', (
+    tester,
+  ) async {
+    final studyRepository = _RecordingStudyRepository();
+    final controller = DictionaryController(
+      dictionaryRepository: _FakeDictionaryRepository(),
+      studyRepository: studyRepository,
+    );
+
+    await tester.pumpWidget(
+      ShawyerWordsApp(
+        controller: controller,
+        studyRepository: studyRepository,
+        studyPlanController: StudyPlanController(
+          repository: InMemoryStudyPlanRepository.seeded(),
+        ),
+        wordDetailPageBuilder: (word, initialEntry) => Scaffold(
+          body: Center(child: Text('detail:$word:${initialEntry?.word ?? ''}')),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('背单词').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('选择词汇表'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('IELTS乱序完整版').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('释义'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('查看完整释义'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('detail:abandon:abandon'), findsOneWidget);
+  });
 }
 
 class _FakeDictionaryRepository implements DictionaryRepository {

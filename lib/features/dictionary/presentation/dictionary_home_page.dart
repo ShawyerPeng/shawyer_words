@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
-import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 
 class DictionaryHomePage extends StatelessWidget {
@@ -309,10 +308,35 @@ class _ReadyState extends StatelessWidget {
   }
 }
 
+class _DecisionBackground extends StatelessWidget {
+  const _DecisionBackground({
+    required this.alignment,
+    required this.label,
+    required this.color,
+  });
+
+  final Alignment alignment;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      alignment: alignment,
+      child: Text(label, style: Theme.of(context).textTheme.titleMedium),
+    );
+  }
+}
+
 class _LegacyWordCard extends StatelessWidget {
   const _LegacyWordCard({required this.entry});
 
-  final WordEntry entry;
+  final dynamic entry;
 
   @override
   Widget build(BuildContext context) {
@@ -390,31 +414,6 @@ class _LegacySectionLabel extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(label),
-    );
-  }
-}
-
-class _DecisionBackground extends StatelessWidget {
-  const _DecisionBackground({
-    required this.alignment,
-    required this.label,
-    required this.color,
-  });
-
-  final Alignment alignment;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      alignment: alignment,
-      child: Text(label, style: Theme.of(context).textTheme.titleMedium),
     );
   }
 }

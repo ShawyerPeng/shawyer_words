@@ -25,6 +25,28 @@ void main() {
     );
   });
 
+  test('maps one raw lookup result directly into a word entry', () {
+    final parser = MdxDictionaryParser();
+
+    final entry = parser.mapEntry(
+      word: 'abandon',
+      rawContent: '''
+<div class="entry">
+  <div class="phonetic">/əˈbændən/</div>
+  <span class="pos">verb</span>
+  <div class="definition">to leave behind</div>
+  <div class="example">They abandon the plan at sunrise.</div>
+</div>
+''',
+    );
+
+    expect(entry.word, 'abandon');
+    expect(entry.pronunciation, '/əˈbændən/');
+    expect(entry.partOfSpeech, 'verb');
+    expect(entry.definition, 'to leave behind');
+    expect(entry.exampleSentence, 'They abandon the plan at sunrise.');
+  });
+
   test('allows legacy mdx dictionaries when the backend can read them', () async {
     final tempDir = await Directory.systemTemp.createTemp('legacy_mdx_test');
     final file = File('${tempDir.path}/legacy.mdx');

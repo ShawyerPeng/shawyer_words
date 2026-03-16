@@ -9,6 +9,7 @@ void main() {
   testWidgets(
     'definition is hidden until revealed and known advances to next word',
     (tester) async {
+      final navigatorKey = GlobalKey<NavigatorState>();
       final studyRepository = _RecordingStudyRepository();
       final controller = StudySessionController(
         entries: const [
@@ -34,7 +35,17 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(home: StudySessionPage(controller: controller)),
+        MaterialApp(
+          navigatorKey: navigatorKey,
+          home: StudySessionPage(
+            controller: controller,
+            wordDetailPageBuilder: (word, initialEntry) => Scaffold(
+              body: Center(
+                child: Text('detail:$word:${initialEntry?.word ?? ''}'),
+              ),
+            ),
+          ),
+        ),
       );
 
       expect(find.text('贵族统治；贵族阶层'), findsNothing);
@@ -50,10 +61,9 @@ void main() {
       await tester.tap(find.text('查看完整释义'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Raw dictionary content'), findsOneWidget);
-      expect(find.text('<p>aristocracy</p>'), findsOneWidget);
+      expect(find.text('detail:aristocracy:aristocracy'), findsOneWidget);
 
-      await tester.pageBack();
+      navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('认识'));

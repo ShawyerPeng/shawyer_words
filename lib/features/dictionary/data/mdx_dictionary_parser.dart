@@ -15,7 +15,7 @@ abstract class MdictReadable {
 
 class MdxDictionaryParser {
   MdxDictionaryParser({MdictReaderFactory? readerFactory})
-    : _readerFactory = readerFactory ?? ((path) => _DictReaderAdapter(path));
+    : _readerFactory = readerFactory ?? ((path) => DictReaderAdapter(path));
 
   final MdictReaderFactory _readerFactory;
 
@@ -61,7 +61,7 @@ class MdxDictionaryParser {
         if (content == null || content.trim().isEmpty) {
           continue;
         }
-        entries.add(_mapEntry(word: key, rawContent: content));
+        entries.add(mapEntry(word: key, rawContent: content));
       }
 
       if (entries.isEmpty) {
@@ -86,7 +86,7 @@ class MdxDictionaryParser {
       await reader.close();
     }
   }
-  WordEntry _mapEntry({
+  WordEntry mapEntry({
     required String word,
     required String rawContent,
   }) {
@@ -147,8 +147,8 @@ class MdxDictionaryParser {
   }
 }
 
-class _DictReaderAdapter implements MdictReadable {
-  _DictReaderAdapter(String path) : _reader = DictReader(path);
+class DictReaderAdapter implements MdictReadable {
+  DictReaderAdapter(String path) : _reader = DictReader(path);
 
   final DictReader _reader;
   final Map<String, RecordOffsetInfo> _offsetByKey = <String, RecordOffsetInfo>{};
