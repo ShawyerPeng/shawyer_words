@@ -5,14 +5,17 @@ import 'package:shawyer_words/features/word_detail/domain/word_knowledge_reposit
 
 class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
   SqliteWordKnowledgeRepository({
-    required this.databasePath,
+    this.databasePath,
+    Future<String> Function()? databasePathResolver,
     DatabaseFactory? databaseFactory,
-  }) : _databaseFactory = databaseFactory ?? sqflite.databaseFactory;
+  }) : _databasePathResolver = databasePathResolver,
+       _databaseFactory = databaseFactory;
 
   static const String _tableName = 'word_knowledge';
 
-  final String databasePath;
-  final DatabaseFactory _databaseFactory;
+  final String? databasePath;
+  final Future<String> Function()? _databasePathResolver;
+  final DatabaseFactory? _databaseFactory;
 
   Database? _database;
 
@@ -100,8 +103,8 @@ class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
       return existing;
     }
 
-    final database = await _databaseFactory.openDatabase(
-      databasePath,
+    final database = await (_databaseFactory ?? sqflite.databaseFactory).openDatabase(
+      await _resolveDatabasePath(),
       options: OpenDatabaseOptions(
         version: 1,
         onCreate: (db, _) async {
@@ -120,5 +123,15 @@ class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
     );
     _database = database;
     return database;
+  }
+
+  Future<String> _resolveDatabasePath() async {
+    if (databasePath != null) {
+      return databasePath!;
+    }
+    if (_databasePathResolver != null) {
+      return _databasePathResolver();
+    }
+    throw StateError('A database path or resolver is required.');
   }
 }

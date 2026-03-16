@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' hide SearchController;
+import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
-import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 enum SearchContentType { words, articles }
 
@@ -9,9 +9,11 @@ class SearchPage extends StatefulWidget {
   const SearchPage({
     super.key,
     required this.controller,
+    required this.wordDetailPageBuilder,
   });
 
   final SearchController controller;
+  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -43,7 +45,7 @@ class _SearchPageState extends State<SearchPage> {
     }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => WordDetailPage(entry: entry),
+        builder: (_) => widget.wordDetailPageBuilder(entry.word, entry),
       ),
     );
   }

@@ -2,18 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
+import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study/presentation/word_card_view.dart';
+import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 class DictionaryHomePage extends StatelessWidget {
   const DictionaryHomePage({
     super.key,
     required this.controller,
     required this.pickDictionaryFile,
+    required this.wordDetailPageBuilder,
   });
 
   final DictionaryController controller;
   final DictionaryFilePicker pickDictionaryFile;
+  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +32,10 @@ class DictionaryHomePage extends StatelessWidget {
                 child: CircularProgressIndicator(),
               ),
               DictionaryStatus.ready when controller.state.currentEntry != null =>
-                _ReadyState(controller: controller),
+                _ReadyState(
+                  controller: controller,
+                  wordDetailPageBuilder: wordDetailPageBuilder,
+                ),
               DictionaryStatus.failure => _FailureState(
                 onImport: () => _handleImport(context),
                 errorMessage:
@@ -222,9 +229,13 @@ class _FailureState extends StatelessWidget {
 }
 
 class _ReadyState extends StatelessWidget {
-  const _ReadyState({required this.controller});
+  const _ReadyState({
+    required this.controller,
+    required this.wordDetailPageBuilder,
+  });
 
   final DictionaryController controller;
+  final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -304,11 +315,22 @@ class _ReadyState extends StatelessWidget {
                 };
                 controller.recordDecision(decision);
               },
-              child: WordCardView(entry: entry),
+              child: WordCardView(
+                entry: entry,
+                onTap: () => _openWordDetail(context, entry),
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openWordDetail(BuildContext context, WordEntry entry) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => wordDetailPageBuilder(entry.word, entry),
+      ),
     );
   }
 }

@@ -23,4 +23,28 @@ void main() {
 
     expect(find.text('<div>fallback dictionary content</div>'), findsOneWidget);
   });
+
+  testWidgets('invokes onTap when the card is pressed', (tester) async {
+    var tapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WordCardView(
+            entry: const WordEntry(
+              id: '2',
+              word: 'brisk',
+              rawContent: '<div>brisk</div>',
+            ),
+            onTap: () => tapped = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('brisk'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
 }

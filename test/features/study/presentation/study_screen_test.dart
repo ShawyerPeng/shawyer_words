@@ -40,6 +40,36 @@ void main() {
     expect(studyRepository.savedDecisions, [StudyDecisionType.known]);
     expect(find.text('brisk'), findsOneWidget);
   });
+
+  testWidgets('tapping the study card opens word detail', (tester) async {
+    final controller = DictionaryController(
+      dictionaryRepository: _FakeDictionaryRepository(),
+      studyRepository: _RecordingStudyRepository(),
+    );
+
+    await tester.pumpWidget(
+      ShawyerWordsApp(
+        controller: controller,
+        pickDictionaryFile: () async => '/tmp/test.zip',
+        wordDetailPageBuilder: (word, initialEntry) => Scaffold(
+          body: Center(
+            child: Text('detail:$word:${initialEntry?.word ?? ''}'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('背单词').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('abandon'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('detail:abandon:abandon'), findsOneWidget);
+  });
 }
 
 class _FakeDictionaryRepository implements DictionaryRepository {
