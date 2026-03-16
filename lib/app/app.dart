@@ -16,6 +16,9 @@ import 'package:shawyer_words/features/search/data/dictionary_word_lookup_reposi
 import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
 import 'package:shawyer_words/features/search/data/sample_word_lookup_repository.dart';
 import 'package:shawyer_words/features/study/data/in_memory_study_repository.dart';
+import 'package:shawyer_words/features/study/domain/study_repository.dart';
+import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
+import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repository.dart';
 
 typedef DictionaryFilePicker = Future<String?> Function();
 
@@ -26,12 +29,16 @@ class ShawyerWordsApp extends StatelessWidget {
     DictionaryLibraryController? dictionaryLibraryController,
     DictionaryFilePicker? pickDictionaryFile,
     SearchController? searchController,
+    StudyRepository? studyRepository,
+    StudyPlanController? studyPlanController,
   }) {
+    final resolvedStudyRepository =
+        studyRepository ?? InMemoryStudyRepository();
     final resolvedController =
         controller ??
         DictionaryController(
           dictionaryRepository: PlatformDictionaryRepository(),
-          studyRepository: InMemoryStudyRepository(),
+          studyRepository: resolvedStudyRepository,
         );
 
     return ShawyerWordsApp._(
@@ -51,6 +58,10 @@ class ShawyerWordsApp extends StatelessWidget {
       pickDictionaryFile:
           pickDictionaryFile ??
           PlatformDictionaryFilePicker().pickDictionaryFile,
+      studyRepository: resolvedStudyRepository,
+      studyPlanController:
+          studyPlanController ??
+          StudyPlanController(repository: InMemoryStudyPlanRepository.seeded()),
     );
   }
 
@@ -60,12 +71,16 @@ class ShawyerWordsApp extends StatelessWidget {
     required this.dictionaryLibraryController,
     required this.pickDictionaryFile,
     required this.searchController,
+    required this.studyRepository,
+    required this.studyPlanController,
   });
 
   final DictionaryController controller;
   final DictionaryLibraryController dictionaryLibraryController;
   final DictionaryFilePicker pickDictionaryFile;
   final SearchController searchController;
+  final StudyRepository studyRepository;
+  final StudyPlanController studyPlanController;
 
   @override
   Widget build(BuildContext context) {
@@ -77,9 +92,9 @@ class ShawyerWordsApp extends StatelessWidget {
       fontFamily: 'Avenir Next',
       scaffoldBackgroundColor: const Color(0xFFF3F5FA),
       textTheme: ThemeData.light().textTheme.apply(
-            bodyColor: const Color(0xFF1B2030),
-            displayColor: const Color(0xFF1B2030),
-          ),
+        bodyColor: const Color(0xFF1B2030),
+        displayColor: const Color(0xFF1B2030),
+      ),
       useMaterial3: true,
     );
 
@@ -88,10 +103,10 @@ class ShawyerWordsApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: theme,
       home: AppShell(
-        controller: controller,
         dictionaryLibraryController: dictionaryLibraryController,
         searchController: searchController,
-        pickDictionaryFile: pickDictionaryFile,
+        studyPlanController: studyPlanController,
+        studyRepository: studyRepository,
       ),
     );
   }

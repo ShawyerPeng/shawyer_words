@@ -16,6 +16,8 @@ void main() {
               word: 'abandon',
               rawContent: '<div>fallback dictionary content</div>',
             ),
+            definitionVisible: false,
+            onRevealDefinition: _noop,
           ),
         ),
       ),
@@ -24,3 +26,5 @@ void main() {
     expect(find.text('<div>fallback dictionary content</div>'), findsOneWidget);
   });
 }
+
+void _noop() {}
