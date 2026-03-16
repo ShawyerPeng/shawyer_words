@@ -1,31 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_result.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
+import 'package:shawyer_words/features/dictionary/presentation/dictionary_home_page.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 
 void main() {
-  testWidgets('study tab import button loads the first word card', (tester) async {
+  testWidgets('study tab import button loads the first word card', (
+    tester,
+  ) async {
     final controller = DictionaryController(
       dictionaryRepository: _FakeDictionaryRepository(),
       studyRepository: _FakeStudyRepository(),
     );
 
     await tester.pumpWidget(
-      ShawyerWordsApp(
-        controller: controller,
-        pickDictionaryFile: () async => '/tmp/test.zip',
+      MaterialApp(
+        home: Scaffold(
+          body: DictionaryHomePage(
+            controller: controller,
+            pickDictionaryFile: () async => '/tmp/test.zip',
+          ),
+        ),
       ),
     );
-
-    await tester.tap(find.text('背单词').last);
-    await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
     await tester.pump();
@@ -44,19 +47,21 @@ void main() {
     );
 
     await tester.pumpWidget(
-      ShawyerWordsApp(
-        controller: controller,
-        pickDictionaryFile: () async {
-          throw PlatformException(
-            code: 'invalid_file_type',
-            message: 'Please choose a dictionary folder or archive package.',
-          );
-        },
+      MaterialApp(
+        home: Scaffold(
+          body: DictionaryHomePage(
+            controller: controller,
+            pickDictionaryFile: () async {
+              throw PlatformException(
+                code: 'invalid_file_type',
+                message:
+                    'Please choose a dictionary folder or archive package.',
+              );
+            },
+          ),
+        ),
       ),
     );
-
-    await tester.tap(find.text('背单词').last);
-    await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
     await tester.pump();

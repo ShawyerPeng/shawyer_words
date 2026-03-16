@@ -13,46 +13,27 @@ import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repo
 
 void main() {
   testWidgets(
-    'starting study opens rebuilt session flow and records decisions',
+    'study tab shows official-book empty state instead of dictionary import',
     (tester) async {
-      final studyRepository = _RecordingStudyRepository();
-      final controller = DictionaryController(
-        dictionaryRepository: _FakeDictionaryRepository(),
-        studyRepository: studyRepository,
-      );
-
       await tester.pumpWidget(
         ShawyerWordsApp(
-          controller: controller,
-          studyRepository: studyRepository,
+          controller: DictionaryController(
+            dictionaryRepository: _FakeDictionaryRepository(),
+            studyRepository: _FakeStudyRepository(),
+          ),
           studyPlanController: StudyPlanController(
             repository: InMemoryStudyPlanRepository.seeded(),
           ),
-          pickDictionaryFile: () async => '/tmp/test.zip',
+          pickDictionaryFile: () async => null,
         ),
       );
 
       await tester.tap(find.text('背单词').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('选择词汇表'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('IELTS乱序完整版').first);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('开始'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('释义'), findsOneWidget);
-      expect(find.text('认识'), findsOneWidget);
-
-      await tester.tap(find.text('认识'));
-      await tester.pumpAndSettle();
-
-      expect(studyRepository.savedEntryIds, ['1']);
-      expect(studyRepository.savedDecisions, [StudyDecisionType.known]);
-      expect(find.text('brisk'), findsOneWidget);
+      expect(find.text('导入词库包'), findsNothing);
+      expect(find.text('导入词汇'), findsOneWidget);
+      expect(find.text('选择词汇表'), findsOneWidget);
     },
   );
 }
@@ -62,22 +43,22 @@ class _FakeDictionaryRepository implements DictionaryRepository {
   Future<DictionaryImportResult> importDictionary(String filePath) async {
     return const DictionaryImportResult(
       package: DictionaryPackage(
-        id: 'oxford-starter',
-        name: 'Oxford Starter',
+        id: 'dict-1',
+        name: 'Test Dictionary Package',
         type: DictionaryPackageType.imported,
-        rootPath: '/tmp/dictionaries/imported/oxford-starter',
-        mdxPath: '/tmp/dictionaries/imported/oxford-starter/source/main.mdx',
+        rootPath: '/tmp/dictionaries/imported/test-dictionary',
+        mdxPath: '/tmp/dictionaries/imported/test-dictionary/source/main.mdx',
         mddPaths: <String>[],
-        resourcesPath: '/tmp/dictionaries/imported/oxford-starter/resources',
+        resourcesPath: '/tmp/dictionaries/imported/test-dictionary/resources',
         importedAt: '2026-03-16T00:00:00.000Z',
-        entryCount: 2,
+        entryCount: 1,
       ),
       dictionary: DictionarySummary(
         id: 'dict-1',
         name: 'Test Dictionary',
-        sourcePath: '/tmp/dictionaries/imported/oxford-starter',
+        sourcePath: '/tmp/dictionaries/imported/test-dictionary',
         importedAt: '2026-03-16T00:00:00.000Z',
-        entryCount: 2,
+        entryCount: 1,
       ),
       entries: [
         WordEntry(
@@ -89,30 +70,15 @@ class _FakeDictionaryRepository implements DictionaryRepository {
           exampleSentence: 'They abandon the plan at sunrise.',
           rawContent: '<p>abandon</p>',
         ),
-        WordEntry(
-          id: '2',
-          word: 'brisk',
-          pronunciation: '/brɪsk/',
-          partOfSpeech: 'adjective',
-          definition: 'quick and energetic',
-          exampleSentence: 'The morning air felt brisk.',
-          rawContent: '<p>brisk</p>',
-        ),
       ],
     );
   }
 }
 
-class _RecordingStudyRepository implements StudyRepository {
-  final List<String> savedEntryIds = <String>[];
-  final List<StudyDecisionType> savedDecisions = <StudyDecisionType>[];
-
+class _FakeStudyRepository implements StudyRepository {
   @override
   Future<void> saveDecision({
     required String entryId,
     required StudyDecisionType decision,
-  }) async {
-    savedEntryIds.add(entryId);
-    savedDecisions.add(decision);
-  }
+  }) async {}
 }
