@@ -18,6 +18,7 @@ void main() {
             ),
             definitionVisible: false,
             onRevealDefinition: _noop,
+            onOpenDetail: _noop,
           ),
         ),
       ),

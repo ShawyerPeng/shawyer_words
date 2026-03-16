@@ -39,11 +39,22 @@ void main() {
 
       expect(find.text('贵族统治；贵族阶层'), findsNothing);
       expect(find.text('aristocracy'), findsOneWidget);
+      expect(find.text('查看完整释义'), findsNothing);
 
       await tester.tap(find.text('释义'));
       await tester.pumpAndSettle();
 
       expect(find.text('贵族统治；贵族阶层'), findsOneWidget);
+      expect(find.text('查看完整释义'), findsOneWidget);
+
+      await tester.tap(find.text('查看完整释义'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Raw dictionary content'), findsOneWidget);
+      expect(find.text('<p>aristocracy</p>'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('认识'));
       await tester.pumpAndSettle();
