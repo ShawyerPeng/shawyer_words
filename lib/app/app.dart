@@ -8,6 +8,7 @@ import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_ca
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_library_preferences_store.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_library_repository.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_storage.dart';
+import 'package:shawyer_words/features/dictionary/data/platform_dictionary_preview_repository.dart';
 import 'package:shawyer_words/features/dictionary/data/platform_dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/bundled_dictionary_registry.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog.dart';
@@ -53,11 +54,13 @@ class ShawyerWordsApp extends StatelessWidget {
     final wordKnowledgeRepository = SqliteWordKnowledgeRepository(
       databasePathResolver: _wordKnowledgeDatabasePath,
     );
-    final resolvedStudyRepository = studyRepository ?? InMemoryStudyRepository();
+    final resolvedStudyRepository =
+        studyRepository ?? InMemoryStudyRepository();
     final resolvedController =
         controller ??
         DictionaryController(
           dictionaryRepository: PlatformDictionaryRepository(),
+          previewRepository: PlatformDictionaryPreviewRepository(),
           studyRepository: resolvedStudyRepository,
         );
     final resolvedDictionaryLibraryController =
@@ -163,62 +166,63 @@ DictionaryLibraryRepository _buildDictionaryLibraryRepository({
   );
 }
 
-const List<BundledDictionarySeed> _bundledDictionarySeeds = <BundledDictionarySeed>[
-  BundledDictionarySeed(
-    id: 'notes',
-    name: '学习笔记',
-    version: '20251021',
-    category: '默认',
-    entryCount: 120,
-    dictionaryAttribute: '本地词典',
-    fileSizeBytes: 8 * 1024 * 1024,
-  ),
-  BundledDictionarySeed(
-    id: 'eng-zh',
-    name: '英汉－汉英词典',
-    version: '20251021',
-    category: '默认',
-    entryCount: 354021,
-    dictionaryAttribute: '本地词典',
-    fileSizeBytes: 72 * 1024 * 1024,
-  ),
-  BundledDictionarySeed(
-    id: 'synonyms',
-    name: '近义、反义、联想词',
-    version: '20251021',
-    category: '默认',
-    entryCount: 146212,
-    dictionaryAttribute: '本地词典',
-    fileSizeBytes: 36 * 1024 * 1024,
-  ),
-  BundledDictionarySeed(
-    id: 'phrasebook',
-    name: '词组｜习惯用语',
-    version: '20251021',
-    category: '默认',
-    entryCount: 88432,
-    dictionaryAttribute: '本地词典',
-    fileSizeBytes: 28 * 1024 * 1024,
-  ),
-  BundledDictionarySeed(
-    id: 'example-bank',
-    name: '常用例句库',
-    version: '20251021',
-    category: '默认',
-    entryCount: 163540,
-    dictionaryAttribute: '本地词典',
-    fileSizeBytes: 41 * 1024 * 1024,
-  ),
-  BundledDictionarySeed(
-    id: 'eng-eng',
-    name: '英英词典',
-    version: '20251021',
-    category: '默认',
-    entryCount: 428674,
-    dictionaryAttribute: '本地词典',
-    fileSizeBytes: 90 * 1024 * 1024,
-  ),
-];
+const List<BundledDictionarySeed> _bundledDictionarySeeds =
+    <BundledDictionarySeed>[
+      BundledDictionarySeed(
+        id: 'notes',
+        name: '学习笔记',
+        version: '20251021',
+        category: '默认',
+        entryCount: 120,
+        dictionaryAttribute: '本地词典',
+        fileSizeBytes: 8 * 1024 * 1024,
+      ),
+      BundledDictionarySeed(
+        id: 'eng-zh',
+        name: '英汉－汉英词典',
+        version: '20251021',
+        category: '默认',
+        entryCount: 354021,
+        dictionaryAttribute: '本地词典',
+        fileSizeBytes: 72 * 1024 * 1024,
+      ),
+      BundledDictionarySeed(
+        id: 'synonyms',
+        name: '近义、反义、联想词',
+        version: '20251021',
+        category: '默认',
+        entryCount: 146212,
+        dictionaryAttribute: '本地词典',
+        fileSizeBytes: 36 * 1024 * 1024,
+      ),
+      BundledDictionarySeed(
+        id: 'phrasebook',
+        name: '词组｜习惯用语',
+        version: '20251021',
+        category: '默认',
+        entryCount: 88432,
+        dictionaryAttribute: '本地词典',
+        fileSizeBytes: 28 * 1024 * 1024,
+      ),
+      BundledDictionarySeed(
+        id: 'example-bank',
+        name: '常用例句库',
+        version: '20251021',
+        category: '默认',
+        entryCount: 163540,
+        dictionaryAttribute: '本地词典',
+        fileSizeBytes: 41 * 1024 * 1024,
+      ),
+      BundledDictionarySeed(
+        id: 'eng-eng',
+        name: '英英词典',
+        version: '20251021',
+        category: '默认',
+        entryCount: 428674,
+        dictionaryAttribute: '本地词典',
+        fileSizeBytes: 90 * 1024 * 1024,
+      ),
+    ];
 
 Future<String> _dictionaryRootPath() async {
   final supportDirectory = await getApplicationSupportDirectory();

@@ -6,7 +6,7 @@
 
 **Architecture:** Add a storage/catalog layer that owns dictionary package directories and manifests. Import goes through staging, normalization, validation, and atomic publish into app-managed storage. Existing parsing logic is adapted from a raw `filePath` input to a package-driven flow so the active dictionary package becomes the source of truth.
 
-**Tech Stack:** Flutter, Dart, local filesystem APIs, platform channel/file-picker integration, dictionary package manifests, Flutter tests.
+**Tech Stack:** Flutter, Dart, local filesystem APIs, platform channel/file-picker integration, dictionary package manifests, paginated preview state, HTML rendering, Flutter tests.
 
 ---
 
@@ -260,3 +260,129 @@ Expected: PASS
 
 Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter analyze`
 Expected: `No issues found!`
+
+### Task 10: Add Import Session Preview Models
+
+**Files:**
+- Create: `lib/features/dictionary/domain/dictionary_import_preview.dart`
+- Create: `lib/features/dictionary/domain/dictionary_preview_repository.dart`
+- Test: `test/features/dictionary/domain/dictionary_import_preview_test.dart`
+
+**Step 1: Write the failing test**
+
+Create tests for:
+
+- preview session summaries for primary `MDX` and related resource files
+- page metadata for `1000` entries per page
+- 10-page grouped pagination math
+
+**Step 2: Run test to verify it fails**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/domain/dictionary_import_preview_test.dart`
+Expected: FAIL because preview models do not exist yet
+
+**Step 3: Write minimal implementation**
+
+Add immutable preview models and pagination helpers.
+
+**Step 4: Run test to verify it passes**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/domain/dictionary_import_preview_test.dart`
+Expected: PASS
+
+### Task 11: Build Preview Repository
+
+**Files:**
+- Create: `lib/features/dictionary/data/platform_dictionary_preview_repository.dart`
+- Modify: `lib/features/dictionary/data/dictionary_package_scanner.dart`
+- Modify: `lib/features/dictionary/data/mdx_dictionary_parser.dart`
+- Test: `test/features/dictionary/data/platform_dictionary_preview_repository_test.dart`
+
+**Step 1: Write the failing test**
+
+Create tests for:
+
+- scanning and classifying selected files across repeated picker additions
+- previewing dictionary metadata and file inventory without installation
+- loading preview pages at `1000` entries per page
+- loading entry detail HTML for a selected preview item
+
+**Step 2: Run test to verify it fails**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/data/platform_dictionary_preview_repository_test.dart`
+Expected: FAIL because preview repository support does not exist yet
+
+**Step 3: Write minimal implementation**
+
+Implement a preview repository that reuses package scanning/parsing logic while
+keeping installation separate.
+
+**Step 4: Run test to verify it passes**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/data/platform_dictionary_preview_repository_test.dart`
+Expected: PASS
+
+### Task 12: Add Import Session Controller State
+
+**Files:**
+- Modify: `lib/features/dictionary/application/dictionary_controller.dart`
+- Test: `test/features/dictionary/application/dictionary_controller_test.dart`
+
+**Step 1: Write the failing test**
+
+Add tests for:
+
+- opening the overlay starts an import session
+- cancelling picker keeps the overlay active
+- adding files transitions to confirmation state
+- previewing loads the first page and first entry
+- installing triggers the existing repository import only after confirmation
+
+**Step 2: Run test to verify it fails**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/application/dictionary_controller_test.dart`
+Expected: FAIL because import-session state and actions do not exist yet
+
+**Step 3: Write minimal implementation**
+
+Extend the controller with an isolated import-session state machine and preview
+actions that do not disturb the installed-study state.
+
+**Step 4: Run test to verify it passes**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/application/dictionary_controller_test.dart`
+Expected: PASS
+
+### Task 13: Build Overlay, Confirmation, And Preview UI
+
+**Files:**
+- Modify: `lib/features/dictionary/presentation/dictionary_home_page.dart`
+- Modify: `pubspec.yaml`
+- Test: `test/features/dictionary/presentation/dictionary_home_page_test.dart`
+
+**Step 1: Write the failing test**
+
+Add tests for:
+
+- showing the import overlay before opening the picker
+- keeping the overlay visible after picker cancellation
+- reopening the picker from the center icon and the "添加文件" action
+- showing the confirmation dialog with detected files
+- previewing `1000` entries per page
+- showing 10-page grouped square page buttons
+- jumping to the selected page and focusing the first entry
+
+**Step 2: Run test to verify it fails**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/presentation/dictionary_home_page_test.dart`
+Expected: FAIL because the overlay, confirmation, and preview UI do not exist yet
+
+**Step 3: Write minimal implementation**
+
+Add the import-session overlay, confirmation dialog, full-screen preview, and
+HTML entry detail rendering.
+
+**Step 4: Run test to verify it passes**
+
+Run: `/Users/shawyerpeng/sdk/flutter/bin/flutter test test/features/dictionary/presentation/dictionary_home_page_test.dart`
+Expected: PASS
