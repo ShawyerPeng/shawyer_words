@@ -150,6 +150,67 @@ Future UI should also expose:
 - active package selection
 - delete imported package
 
+## Import Session UX
+
+The package import entry flow should become a multi-stage import session rather
+than a direct "pick then install" action.
+
+Stages:
+
+- `pickerOverlay`
+- `confirming`
+- `previewing`
+- `installing`
+
+Interaction rules:
+
+1. Tapping "导入词库包" first shows a full-screen overlay.
+2. Showing the overlay immediately triggers the iOS document picker.
+3. If the user cancels the picker, the overlay remains visible.
+4. Tapping the central overlay icon or the top-right "添加文件" action opens the
+   picker again.
+5. After a valid selection, the app shows a confirmation dialog instead of
+   installing immediately.
+6. The confirmation dialog lists the detected primary `MDX` and all related
+   `MDD`/`js`/`css`/other resource files collected for the current import
+   session.
+7. The confirmation dialog allows adding more files into the same import
+   session.
+8. The user can choose either "预览" or "安装".
+9. "安装" continues to use the existing install/import behavior.
+
+## Preview UX
+
+Preview should be an install-safe inspection flow. It must not replace the
+currently active dictionary until the user confirms installation.
+
+Preview sections:
+
+- dictionary metadata
+- imported file inventory
+- paginated entry browser
+- individual entry detail with rendered HTML
+
+Metadata behavior:
+
+- show a collapsed summary first
+- render approximately one-third of the metadata text initially
+- require a "更多" action to expand the full metadata
+
+Entry browser behavior:
+
+- load entries in pages of `1000`
+- use 10-page grouped navigation controls
+- render numbered square page buttons for the current 10-page group
+- switching pages scrolls the preview list back to the top and focuses the
+  first entry on that page
+
+Entry detail behavior:
+
+- show parsed summary fields when available
+- render the entry's raw HTML body
+- keep heavy HTML rendering out of the main list rows
+
 ## Architecture Recommendation
 
 Use a filesystem-first approach with per-package `manifest.json` files.

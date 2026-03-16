@@ -2,53 +2,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_result.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_preview_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 
 void main() {
-  testWidgets('search shows prefix matches, opens detail, and records history', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ShawyerWordsApp(
-        controller: DictionaryController(
-          dictionaryRepository: _FakeDictionaryRepository(),
-          studyRepository: _FakeStudyRepository(),
+  testWidgets(
+    'search shows prefix matches, opens detail, and records history',
+    (tester) async {
+      await tester.pumpWidget(
+        ShawyerWordsApp(
+          controller: DictionaryController(
+            dictionaryRepository: _FakeDictionaryRepository(),
+            previewRepository: _FakeDictionaryPreviewRepository(),
+            studyRepository: _FakeStudyRepository(),
+          ),
+          pickDictionaryFile: () async => null,
         ),
-        pickDictionaryFile: () async => null,
-      ),
-    );
+      );
 
-    await tester.tap(find.byKey(const ValueKey('open-search-page')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('open-search-page')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('历史查询'), findsOneWidget);
+      expect(find.text('历史查询'), findsOneWidget);
 
-    await tester.enterText(find.byType(EditableText), 'nu');
-    await tester.pumpAndSettle();
+      await tester.enterText(find.byType(EditableText), 'nu');
+      await tester.pumpAndSettle();
 
-    expect(find.text('nut'), findsOneWidget);
+      expect(find.text('nut'), findsOneWidget);
 
-    await tester.tap(find.text('nut'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('nut'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Raw dictionary content'), findsOneWidget);
-    expect(find.text('干果, 坚果; 螺母'), findsOneWidget);
+      expect(find.text('Raw dictionary content'), findsOneWidget);
+      expect(find.text('干果, 坚果; 螺母'), findsOneWidget);
 
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
 
-    expect(find.text('nut'), findsOneWidget);
+      expect(find.text('nut'), findsOneWidget);
 
-    await tester.tap(find.text('清除'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('清除'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('nut'), findsNothing);
-  });
+      expect(find.text('nut'), findsNothing);
+    },
+  );
 }
 
 class _FakeDictionaryRepository implements DictionaryRepository {
@@ -94,4 +98,32 @@ class _FakeStudyRepository implements StudyRepository {
     required String entryId,
     required StudyDecisionType decision,
   }) async {}
+}
+
+class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
+  @override
+  Future<void> disposePreview(DictionaryImportPreview preview) async {}
+
+  @override
+  Future<DictionaryPreviewPage> loadPage({
+    required DictionaryImportPreview preview,
+    required int pageNumber,
+  }) async {
+    return const DictionaryPreviewPage(pageNumber: 1, entries: []);
+  }
+
+  @override
+  Future<DictionaryImportPreview> preparePreview(
+    List<String> sourcePaths,
+  ) async {
+    return const DictionaryImportPreview(
+      sourceRootPath: '/tmp/session',
+      title: 'Preview',
+      primaryMdxPath: '/tmp/session/main.mdx',
+      metadataText: '',
+      files: [],
+      entryKeys: [],
+      totalEntries: 0,
+    );
+  }
 }

@@ -9,6 +9,7 @@ import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_li
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_library_repository.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_storage.dart';
 import 'package:shawyer_words/features/dictionary/data/platform_dictionary_file_picker.dart';
+import 'package:shawyer_words/features/dictionary/data/platform_dictionary_preview_repository.dart';
 import 'package:shawyer_words/features/dictionary/data/platform_dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/bundled_dictionary_registry.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
@@ -31,6 +32,7 @@ class ShawyerWordsApp extends StatelessWidget {
         controller ??
         DictionaryController(
           dictionaryRepository: PlatformDictionaryRepository(),
+          previewRepository: PlatformDictionaryPreviewRepository(),
           studyRepository: InMemoryStudyRepository(),
         );
 
@@ -77,9 +79,9 @@ class ShawyerWordsApp extends StatelessWidget {
       fontFamily: 'Avenir Next',
       scaffoldBackgroundColor: const Color(0xFFF3F5FA),
       textTheme: ThemeData.light().textTheme.apply(
-            bodyColor: const Color(0xFF1B2030),
-            displayColor: const Color(0xFF1B2030),
-          ),
+        bodyColor: const Color(0xFF1B2030),
+        displayColor: const Color(0xFF1B2030),
+      ),
       useMaterial3: true,
     );
 

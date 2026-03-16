@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dict_reader/dict_reader.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_result.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
@@ -19,39 +23,76 @@ class MdxDictionaryParser {
 
   final MdictReaderFactory _readerFactory;
 
-  Future<DictionaryImportResult> parse(DictionaryPackage dictionaryPackage) async {
+  Future<DictionaryImportResult> parse(
+    DictionaryPackage dictionaryPackage,
+  ) async {
+    final preview = await buildPreview(dictionaryPackage);
+    final firstPage = await loadPreviewPage(
+      dictionaryPackage,
+      preview.entryKeys.take(24).toList(),
+    );
+    if (firstPage.isEmpty) {
+      throw UnsupportedError(
+        'This app could not read any usable entries from the selected MDX file. '
+        'The dictionary may contain unsupported or corrupted record offsets.',
+      );
+    }
+
+    return DictionaryImportResult(
+      package: dictionaryPackage,
+      dictionary: DictionarySummary(
+        id: dictionaryPackage.id,
+        name: dictionaryPackage.name,
+        sourcePath: dictionaryPackage.rootPath,
+        importedAt: dictionaryPackage.importedAt,
+        entryCount: firstPage.length,
+      ),
+      entries: firstPage,
+    );
+  }
+
+  Future<DictionaryImportPreview> buildPreview(
+    DictionaryPackage dictionaryPackage, {
+    int pageSize = 1000,
+  }) async {
     final reader = _readerFactory(dictionaryPackage.mdxPath);
     try {
       await reader.open();
     } on Object catch (error) {
-      final message = '$error';
-      if (message.contains('Compression method not supported')) {
-        throw UnsupportedError(
-          'This app could not decode the selected MDX file because it uses an unsupported compression format.',
-        );
-      }
-      if (
-        error is FormatException ||
-        message.contains('Filter error, bad data') ||
-        message.contains('Version <2.0 not implemented')
-      ) {
-        throw UnsupportedError(
-          'This app could not decode the selected MDX file. '
-          'It is likely encrypted or uses an unsupported compression format.',
-        );
-      }
-      rethrow;
+      _mapOpenError(error);
     }
 
     try {
-      final keys = await reader.listKeys(limit: 128);
+      final keys = await reader.listKeys(limit: 1 << 30);
+      return DictionaryImportPreview(
+        sourceRootPath: dictionaryPackage.rootPath,
+        title: dictionaryPackage.name,
+        primaryMdxPath: dictionaryPackage.mdxPath,
+        metadataText: _readMetadataText(dictionaryPackage.mdxPath),
+        files: const <DictionaryPreviewFile>[],
+        entryKeys: keys,
+        totalEntries: keys.length,
+        pageSize: pageSize,
+      );
+    } finally {
+      await reader.close();
+    }
+  }
+
+  Future<List<WordEntry>> loadPreviewPage(
+    DictionaryPackage dictionaryPackage,
+    List<String> keys,
+  ) async {
+    final reader = _readerFactory(dictionaryPackage.mdxPath);
+    try {
+      await reader.open();
+    } on Object catch (error) {
+      _mapOpenError(error);
+    }
+
+    try {
       final entries = <WordEntry>[];
-
       for (final key in keys) {
-        if (entries.length >= 24) {
-          break;
-        }
-
         String? content;
         try {
           content = await reader.lookup(key);
@@ -63,33 +104,13 @@ class MdxDictionaryParser {
         }
         entries.add(_mapEntry(word: key, rawContent: content));
       }
-
-      if (entries.isEmpty) {
-        throw UnsupportedError(
-          'This app could not read any usable entries from the selected MDX file. '
-          'The dictionary may contain unsupported or corrupted record offsets.',
-        );
-      }
-
-      return DictionaryImportResult(
-        package: dictionaryPackage,
-        dictionary: DictionarySummary(
-          id: dictionaryPackage.id,
-          name: dictionaryPackage.name,
-          sourcePath: dictionaryPackage.rootPath,
-          importedAt: dictionaryPackage.importedAt,
-          entryCount: entries.length,
-        ),
-        entries: entries,
-      );
+      return entries;
     } finally {
       await reader.close();
     }
   }
-  WordEntry _mapEntry({
-    required String word,
-    required String rawContent,
-  }) {
+
+  WordEntry _mapEntry({required String word, required String rawContent}) {
     return WordEntry(
       id: word,
       word: word,
@@ -137,6 +158,44 @@ class MdxDictionaryParser {
     return null;
   }
 
+  Never _mapOpenError(Object error) {
+    final message = '$error';
+    if (message.contains('Compression method not supported')) {
+      throw UnsupportedError(
+        'This app could not decode the selected MDX file because it uses an unsupported compression format.',
+      );
+    }
+    if (error is FormatException ||
+        message.contains('Filter error, bad data') ||
+        message.contains('Version <2.0 not implemented')) {
+      throw UnsupportedError(
+        'This app could not decode the selected MDX file. '
+        'It is likely encrypted or uses an unsupported compression format.',
+      );
+    }
+    throw error;
+  }
+
+  String _readMetadataText(String filePath) {
+    try {
+      final bytes = File(filePath).readAsBytesSync();
+      if (bytes.length < 8) {
+        return '';
+      }
+      final headerLength = ByteData.sublistView(bytes, 0, 4).getUint32(0);
+      if (headerLength <= 0 || bytes.length < 4 + headerLength) {
+        return '';
+      }
+      final codeUnits = <int>[];
+      for (var index = 4; index < 4 + headerLength; index += 2) {
+        codeUnits.add(bytes[index] | (bytes[index + 1] << 8));
+      }
+      return String.fromCharCodes(codeUnits).trim();
+    } on Object {
+      return '';
+    }
+  }
+
   String _stripHtml(String value) {
     return value
         .replaceAll(RegExp(r'<[^>]+>'), ' ')
@@ -151,7 +210,8 @@ class _DictReaderAdapter implements MdictReadable {
   _DictReaderAdapter(String path) : _reader = DictReader(path);
 
   final DictReader _reader;
-  final Map<String, RecordOffsetInfo> _offsetByKey = <String, RecordOffsetInfo>{};
+  final Map<String, RecordOffsetInfo> _offsetByKey =
+      <String, RecordOffsetInfo>{};
 
   @override
   Future<void> open() {

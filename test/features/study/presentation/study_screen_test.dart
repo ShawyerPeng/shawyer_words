@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_result.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_preview_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
@@ -15,6 +17,7 @@ void main() {
     final studyRepository = _RecordingStudyRepository();
     final controller = DictionaryController(
       dictionaryRepository: _FakeDictionaryRepository(),
+      previewRepository: _FakeDictionaryPreviewRepository(),
       studyRepository: studyRepository,
     );
 
@@ -29,6 +32,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilledButton, '导入词库包'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '安装'));
     await tester.pumpAndSettle();
 
     expect(find.text('abandon'), findsOneWidget);
@@ -99,5 +104,40 @@ class _RecordingStudyRepository implements StudyRepository {
   }) async {
     savedEntryIds.add(entryId);
     savedDecisions.add(decision);
+  }
+}
+
+class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
+  @override
+  Future<void> disposePreview(DictionaryImportPreview preview) async {}
+
+  @override
+  Future<DictionaryPreviewPage> loadPage({
+    required DictionaryImportPreview preview,
+    required int pageNumber,
+  }) async {
+    return const DictionaryPreviewPage(pageNumber: 1, entries: []);
+  }
+
+  @override
+  Future<DictionaryImportPreview> preparePreview(
+    List<String> sourcePaths,
+  ) async {
+    return const DictionaryImportPreview(
+      sourceRootPath: '/tmp/session',
+      title: 'Preview',
+      primaryMdxPath: '/tmp/session/main.mdx',
+      metadataText: '',
+      files: [
+        DictionaryPreviewFile(
+          path: '/tmp/session/main.mdx',
+          name: 'main.mdx',
+          kind: DictionaryPreviewFileKind.mdx,
+          isPrimary: true,
+        ),
+      ],
+      entryKeys: [],
+      totalEntries: 0,
+    );
   }
 }
