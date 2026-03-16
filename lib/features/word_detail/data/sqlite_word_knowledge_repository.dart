@@ -1,5 +1,5 @@
 import 'package:sqflite/sqflite.dart' as sqflite;
-import 'package:sqflite_common/sqlite_api.dart';
+import 'package:sqflite/sqlite_api.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 

@@ -12,7 +12,6 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart
 import 'package:shawyer_words/features/word_detail/data/dictionary_entry_lookup_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/platform_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
-import 'package:shawyer_words/features/word_detail/domain/word_detail.dart';
 
 void main() {
   group('DictionaryEntryLookupRepository', () {

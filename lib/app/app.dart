@@ -23,7 +23,6 @@ import 'package:shawyer_words/features/word_detail/application/word_detail_contr
 import 'package:shawyer_words/features/word_detail/data/dictionary_entry_lookup_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/platform_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/sqlite_word_knowledge_repository.dart';
-import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 typedef DictionaryFilePicker = Future<String?> Function();
