@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart' hide SearchController;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite/sqlite_api.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
@@ -20,8 +24,14 @@ import 'package:shawyer_words/features/word_detail/domain/word_detail_repository
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
+import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() {
+    WebViewPlatform.instance = _FakeWebViewPlatform();
+  });
+
   testWidgets(
     'search shows prefix matches, opens detail, and records history',
     (tester) async {
@@ -75,6 +85,153 @@ void main() {
       expect(find.text('nut'), findsNothing);
     },
   );
+
+  test('app uses lexdb search results when lexDbPath is provided', () async {
+    sqfliteFfiInit();
+    final tempDirectory = await Directory.systemTemp.createTemp(
+      'lexdb-search-app-test-',
+    );
+    addTearDown(() async {
+      if (await tempDirectory.exists()) {
+        await tempDirectory.delete(recursive: true);
+      }
+    });
+    final databasePath = '${tempDirectory.path}/lexdb.db';
+    final databaseFactory = databaseFactoryFfiNoIsolate;
+    await _seedLexDbSearchDatabase(databasePath, databaseFactory);
+
+    final app = ShawyerWordsApp(
+      controller: DictionaryController(
+        dictionaryRepository: _FakeDictionaryRepository(),
+        previewRepository: _FakeDictionaryPreviewRepository(),
+        studyRepository: _FakeStudyRepository(),
+      ),
+      pickDictionaryFile: () async => null,
+      lexDbPath: databasePath,
+      lexDbDatabaseFactory: databaseFactory,
+      wordDetailPageBuilder: (word, initialEntry) => WordDetailPage(
+        word: word,
+        initialEntry: initialEntry,
+        controller: WordDetailController(
+          detailRepository: _FakeWordDetailRepository(),
+          knowledgeRepository: _FakeWordKnowledgeRepository(),
+        ),
+      ),
+    );
+
+    await app.searchController.updateQuery('aban');
+
+    expect(
+      app.searchController.state.results.map((entry) => entry.word),
+      <String>['abandon'],
+    );
+  });
+}
+
+class _FakeWebViewPlatform extends WebViewPlatform {
+  @override
+  PlatformWebViewController createPlatformWebViewController(
+    PlatformWebViewControllerCreationParams params,
+  ) {
+    return _FakePlatformWebViewController(params);
+  }
+
+  @override
+  PlatformWebViewWidget createPlatformWebViewWidget(
+    PlatformWebViewWidgetCreationParams params,
+  ) {
+    return _FakePlatformWebViewWidget(params);
+  }
+
+  @override
+  PlatformWebViewCookieManager createPlatformCookieManager(
+    PlatformWebViewCookieManagerCreationParams params,
+  ) {
+    return _FakePlatformCookieManager(params);
+  }
+
+  @override
+  PlatformNavigationDelegate createPlatformNavigationDelegate(
+    PlatformNavigationDelegateCreationParams params,
+  ) {
+    return _FakePlatformNavigationDelegate(params);
+  }
+}
+
+class _FakePlatformWebViewController extends PlatformWebViewController {
+  _FakePlatformWebViewController(super.params) : super.implementation();
+
+  @override
+  Future<void> addJavaScriptChannel(
+    JavaScriptChannelParams javaScriptChannelParams,
+  ) async {}
+
+  @override
+  Future<String?> currentUrl() async => 'file:///tmp/test.html';
+
+  @override
+  Future<void> loadFile(String absoluteFilePath) async {}
+
+  @override
+  Future<void> loadRequest(LoadRequestParams params) async {}
+
+  @override
+  Future<void> setBackgroundColor(Color color) async {}
+
+  @override
+  Future<void> setJavaScriptMode(JavaScriptMode javaScriptMode) async {}
+
+  @override
+  Future<void> setPlatformNavigationDelegate(
+    PlatformNavigationDelegate handler,
+  ) async {}
+}
+
+class _FakePlatformCookieManager extends PlatformWebViewCookieManager {
+  _FakePlatformCookieManager(super.params) : super.implementation();
+}
+
+class _FakePlatformWebViewWidget extends PlatformWebViewWidget {
+  _FakePlatformWebViewWidget(super.params) : super.implementation();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+
+class _FakePlatformNavigationDelegate extends PlatformNavigationDelegate {
+  _FakePlatformNavigationDelegate(super.params) : super.implementation();
+
+  @override
+  Future<void> setOnHttpAuthRequest(
+    HttpAuthRequestCallback onHttpAuthRequest,
+  ) async {}
+
+  @override
+  Future<void> setOnHttpError(HttpResponseErrorCallback onHttpError) async {}
+
+  @override
+  Future<void> setOnNavigationRequest(
+    NavigationRequestCallback onNavigationRequest,
+  ) async {}
+
+  @override
+  Future<void> setOnPageFinished(PageEventCallback onPageFinished) async {}
+
+  @override
+  Future<void> setOnPageStarted(PageEventCallback onPageStarted) async {}
+
+  @override
+  Future<void> setOnProgress(ProgressCallback onProgress) async {}
+
+  @override
+  Future<void> setOnUrlChange(UrlChangeCallback onUrlChange) async {}
+
+  @override
+  Future<void> setOnWebResourceError(
+    WebResourceErrorCallback onWebResourceError,
+  ) async {}
 }
 
 class _FakeDictionaryRepository implements DictionaryRepository {
@@ -246,4 +403,35 @@ class _FakeWordLookupRepository implements WordLookupRepository {
         .take(limit)
         .toList();
   }
+}
+
+Future<void> _seedLexDbSearchDatabase(
+  String databasePath,
+  DatabaseFactory databaseFactory,
+) async {
+  final database = await databaseFactory.openDatabase(databasePath);
+  await database.execute('''
+    CREATE TABLE entries (
+      id INTEGER PRIMARY KEY,
+      dict_id TEXT NOT NULL,
+      headword TEXT NOT NULL,
+      headword_lower TEXT NOT NULL,
+      headword_display TEXT
+    )
+  ''');
+  await database.insert('entries', <String, Object?>{
+    'id': 1,
+    'dict_id': 'ldoce',
+    'headword': 'abandon',
+    'headword_lower': 'abandon',
+    'headword_display': 'a·ban·don',
+  });
+  await database.insert('entries', <String, Object?>{
+    'id': 2,
+    'dict_id': 'ldoce',
+    'headword': 'ability',
+    'headword_lower': 'ability',
+    'headword_display': 'a·bil·i·ty',
+  });
+  await database.close();
 }

@@ -92,7 +92,7 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
       return;
     }
 
-    final rawText = await _remoteVocabularyLoader(Uri.parse(sourceUrl));
+    final rawText = await _loadRemoteTextWithFallback(Uri.parse(sourceUrl));
     final entries = _parseRemoteEntries(book.id, rawText);
     if (entries.isEmpty) {
       throw StateError('词汇表内容为空');
@@ -106,6 +106,71 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
     _officialBooks[index] = book.copyWith(
       entries: entries,
       wordCount: entries.length,
+    );
+  }
+
+  Future<String> _loadRemoteTextWithFallback(Uri uri) async {
+    final candidates = <Uri>[uri, ..._buildFallbackUris(uri)];
+    Object? lastError;
+
+    for (final candidate in candidates) {
+      try {
+        return await _remoteVocabularyLoader(candidate);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError != null) {
+      throw lastError;
+    }
+
+    throw StateError('词汇表下载失败');
+  }
+
+  static List<Uri> _buildFallbackUris(Uri uri) {
+    final githubApiUri = _buildGitHubContentsApiUri(uri);
+    if (githubApiUri == null) {
+      return const <Uri>[];
+    }
+
+    return <Uri>[githubApiUri];
+  }
+
+  static Uri? _buildGitHubContentsApiUri(Uri uri) {
+    if (uri.host != 'raw.githubusercontent.com') {
+      return null;
+    }
+
+    final segments = uri.pathSegments;
+    if (segments.length < 4) {
+      return null;
+    }
+
+    final owner = segments[0];
+    final repo = segments[1];
+
+    late final String ref;
+    late final List<String> contentSegments;
+
+    if (segments.length >= 6 &&
+        segments[2] == 'refs' &&
+        segments[3] == 'heads') {
+      ref = segments[4];
+      contentSegments = segments.sublist(5);
+    } else {
+      ref = segments[2];
+      contentSegments = segments.sublist(3);
+    }
+
+    if (contentSegments.isEmpty) {
+      return null;
+    }
+
+    return Uri.https(
+      'api.github.com',
+      '/repos/$owner/$repo/contents/${contentSegments.join('/')}',
+      <String, String>{'ref': ref},
     );
   }
 

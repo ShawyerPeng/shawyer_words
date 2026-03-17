@@ -19,6 +19,7 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_storage.dart
 import 'package:shawyer_words/features/search/application/search_controller.dart';
 import 'package:shawyer_words/features/search/data/installed_dictionary_word_lookup_repository.dart';
 import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
+import 'package:shawyer_words/features/search/data/lexdb_word_lookup_repository.dart';
 import 'package:shawyer_words/features/search/data/sample_word_lookup_repository.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
 import 'package:shawyer_words/features/settings/data/file_system_app_settings_repository.dart';
@@ -51,6 +52,7 @@ class ShawyerWordsApp extends StatelessWidget {
     String? lexDbPath,
     String lexDbDictionaryId = 'lexdb',
     String lexDbDictionaryName = 'LexDB',
+    sqflite.DatabaseFactory? lexDbDatabaseFactory,
   }) {
     final dictionaryCatalog = FileSystemDictionaryCatalog(
       rootPathResolver: _dictionaryRootPath,
@@ -96,7 +98,8 @@ class ShawyerWordsApp extends StatelessWidget {
                       databasePath: lexDbPath,
                       dictionaryId: lexDbDictionaryId,
                       dictionaryName: lexDbDictionaryName,
-                      databaseFactory: sqflite.databaseFactory,
+                      databaseFactory:
+                          lexDbDatabaseFactory ?? sqflite.databaseFactory,
                     ),
             ),
             knowledgeRepository: wordKnowledgeRepository,
@@ -126,11 +129,17 @@ class ShawyerWordsApp extends StatelessWidget {
       searchController:
           searchController ??
           SearchController(
-            lookupRepository: InstalledDictionaryWordLookupRepository(
-              libraryRepository: dictionaryLibraryRepository,
-              catalog: dictionaryCatalog,
-              fallbackRepository: SampleWordLookupRepository.seeded(),
-            ),
+            lookupRepository: lexDbPath == null
+                ? InstalledDictionaryWordLookupRepository(
+                    libraryRepository: dictionaryLibraryRepository,
+                    catalog: dictionaryCatalog,
+                    fallbackRepository: SampleWordLookupRepository.seeded(),
+                  )
+                : LexDbWordLookupRepository(
+                    databasePath: lexDbPath,
+                    databaseFactory:
+                        lexDbDatabaseFactory ?? sqflite.databaseFactory,
+                  ),
             historyRepository: InMemorySearchHistoryRepository(),
           ),
       settingsController: resolvedSettingsController,

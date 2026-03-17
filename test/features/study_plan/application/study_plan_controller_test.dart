@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repository.dart';
@@ -51,6 +53,43 @@ void main() {
             .toList(),
         <String>['abandon', 'brisk', 'ability'],
       );
+    },
+  );
+
+  test(
+    'selecting remote book falls back to GitHub contents API after raw fetch reset',
+    () async {
+      final requestedUris = <String>[];
+      final controller = StudyPlanController(
+        repository: InMemoryStudyPlanRepository.seeded(
+          remoteVocabularyLoader: (uri) async {
+            requestedUris.add(uri.toString());
+            if (uri.host == 'raw.githubusercontent.com') {
+              throw const HttpException('Connection reset by peer');
+            }
+            if (uri.host == 'api.github.com') {
+              return 'alpha\nbeta\n';
+            }
+            throw StateError('Unexpected URI: $uri');
+          },
+        ),
+      );
+
+      await controller.load();
+      final selected = await controller.selectBook('cet46-remote');
+
+      expect(selected, isTrue);
+      expect(controller.state.currentBook?.id, 'cet46-remote');
+      expect(
+        controller.state.currentBook?.entries
+            .map((entry) => entry.word)
+            .toList(),
+        <String>['alpha', 'beta'],
+      );
+      expect(requestedUris, <String>[
+        'https://raw.githubusercontent.com/mahavivo/english-wordlists/refs/heads/master/CET_4%2B6_edited.txt',
+        'https://api.github.com/repos/mahavivo/english-wordlists/contents/CET_4+6_edited.txt?ref=master',
+      ]);
     },
   );
 
