@@ -14,6 +14,8 @@ void main() {
 
     expect(result.dictionary.name, 'test');
     expect(result.dictionary.sourcePath, '/tmp');
+    expect(result.dictionary.entryCount, 1);
+    expect(result.package.entryCount, 1);
     expect(result.entries, hasLength(1));
     expect(result.entries.single.word, 'abandon');
     expect(result.entries.single.pronunciation, '/əˈbændən/');

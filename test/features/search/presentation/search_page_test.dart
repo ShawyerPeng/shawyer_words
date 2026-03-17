@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide SearchController;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
@@ -9,6 +9,9 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_preview_repo
 import 'package:shawyer_words/features/dictionary/domain/dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
+import 'package:shawyer_words/features/search/application/search_controller.dart';
+import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
+import 'package:shawyer_words/features/search/domain/word_lookup_repository.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/word_detail/application/word_detail_controller.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
@@ -28,6 +31,10 @@ void main() {
             dictionaryRepository: _FakeDictionaryRepository(),
             previewRepository: _FakeDictionaryPreviewRepository(),
             studyRepository: _FakeStudyRepository(),
+          ),
+          searchController: SearchController(
+            lookupRepository: _FakeWordLookupRepository(),
+            historyRepository: InMemorySearchHistoryRepository(),
           ),
           pickDictionaryFile: () async => null,
           wordDetailPageBuilder: (word, initialEntry) => WordDetailPage(
@@ -200,5 +207,34 @@ class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
     required String key,
   }) async {
     return null;
+  }
+}
+
+class _FakeWordLookupRepository implements WordLookupRepository {
+  @override
+  WordEntry? findById(String id) => null;
+
+  @override
+  Future<List<WordEntry>> searchWords(String query, {int limit = 20}) async {
+    const entries = <WordEntry>[
+      WordEntry(
+        id: 'nut',
+        word: 'nut',
+        partOfSpeech: 'n.',
+        definition: '干果, 坚果; 螺母',
+        rawContent: '<p>nut</p>',
+      ),
+      WordEntry(
+        id: 'nurture',
+        word: 'nurture',
+        partOfSpeech: 'v.',
+        definition: '培养',
+        rawContent: '<p>nurture</p>',
+      ),
+    ];
+    return entries
+        .where((entry) => entry.word.toLowerCase().startsWith(query.toLowerCase()))
+        .take(limit)
+        .toList();
   }
 }

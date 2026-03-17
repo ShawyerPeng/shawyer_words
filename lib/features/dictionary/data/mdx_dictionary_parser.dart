@@ -64,13 +64,27 @@ class MdxDictionaryParser {
     }
 
     return DictionaryImportResult(
-      package: dictionaryPackage,
+      package: DictionaryPackage(
+        id: dictionaryPackage.id,
+        name: dictionaryPackage.name,
+        type: dictionaryPackage.type,
+        rootPath: dictionaryPackage.rootPath,
+        mdxPath: dictionaryPackage.mdxPath,
+        mddPaths: dictionaryPackage.mddPaths,
+        resourcesPath: dictionaryPackage.resourcesPath,
+        importedAt: dictionaryPackage.importedAt,
+        entryCount: preview.totalEntries,
+        version: dictionaryPackage.version,
+        category: dictionaryPackage.category,
+        dictionaryAttribute: dictionaryPackage.dictionaryAttribute,
+        fileSizeBytes: dictionaryPackage.fileSizeBytes,
+      ),
       dictionary: DictionarySummary(
         id: dictionaryPackage.id,
         name: dictionaryPackage.name,
         sourcePath: dictionaryPackage.rootPath,
         importedAt: dictionaryPackage.importedAt,
-        entryCount: firstPage.length,
+        entryCount: preview.totalEntries,
       ),
       entries: firstPage,
     );

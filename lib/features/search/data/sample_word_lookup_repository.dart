@@ -21,7 +21,7 @@ class SampleWordLookupRepository implements WordLookupRepository {
   }
 
   @override
-  List<WordEntry> searchWords(String query, {int limit = 20}) {
+  Future<List<WordEntry>> searchWords(String query, {int limit = 20}) async {
     return rankWordEntries(entries, query, limit: limit);
   }
 }

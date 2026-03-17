@@ -16,7 +16,7 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog.dart
 import 'package:shawyer_words/features/dictionary/domain/dictionary_library_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_storage.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
-import 'package:shawyer_words/features/search/data/dictionary_word_lookup_repository.dart';
+import 'package:shawyer_words/features/search/data/installed_dictionary_word_lookup_repository.dart';
 import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
 import 'package:shawyer_words/features/search/data/sample_word_lookup_repository.dart';
 import 'package:shawyer_words/features/study/data/in_memory_study_repository.dart';
@@ -94,8 +94,9 @@ class ShawyerWordsApp extends StatelessWidget {
       searchController:
           searchController ??
           SearchController(
-            lookupRepository: DictionaryWordLookupRepository(
-              dictionaryController: resolvedController,
+            lookupRepository: InstalledDictionaryWordLookupRepository(
+              libraryRepository: dictionaryLibraryRepository,
+              catalog: dictionaryCatalog,
               fallbackRepository: SampleWordLookupRepository.seeded(),
             ),
             historyRepository: InMemorySearchHistoryRepository(),

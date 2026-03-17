@@ -39,16 +39,32 @@ class SearchController extends ChangeNotifier {
   final SearchHistoryRepository _historyRepository;
 
   SearchState _state;
+  int _searchRequestId = 0;
 
   SearchState get state => _state;
 
-  void updateQuery(String query) {
+  Future<void> updateQuery(String query) async {
+    final requestId = ++_searchRequestId;
     final normalized = query.trim();
     _state = _state.copyWith(
       query: query,
-      results: normalized.isEmpty
-          ? const <WordEntry>[]
-          : _lookupRepository.searchWords(normalized),
+      results: normalized.isEmpty ? const <WordEntry>[] : const <WordEntry>[],
+      history: _historyRepository.loadHistory(),
+    );
+    notifyListeners();
+
+    if (normalized.isEmpty) {
+      return;
+    }
+
+    final results = await _lookupRepository.searchWords(normalized);
+    if (requestId != _searchRequestId || _state.query != query) {
+      return;
+    }
+
+    _state = _state.copyWith(
+      query: query,
+      results: results,
       history: _historyRepository.loadHistory(),
     );
     notifyListeners();

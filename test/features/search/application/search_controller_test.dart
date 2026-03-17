@@ -35,7 +35,7 @@ void main() {
       historyRepository: InMemorySearchHistoryRepository(),
     );
 
-    controller.updateQuery('nu');
+    await controller.updateQuery('nu');
 
     expect(controller.state.results.map((entry) => entry.word), [
       'nut',
@@ -153,7 +153,7 @@ class _FakeWordLookupRepository implements WordLookupRepository {
   }
 
   @override
-  List<WordEntry> searchWords(String query, {int limit = 20}) {
+  Future<List<WordEntry>> searchWords(String query, {int limit = 20}) async {
     return entries
         .where((entry) => entry.word.toLowerCase().startsWith(query.toLowerCase()))
         .take(limit)

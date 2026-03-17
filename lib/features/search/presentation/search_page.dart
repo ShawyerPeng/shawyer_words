@@ -89,7 +89,9 @@ class _SearchPageState extends State<SearchPage> {
                                     border: InputBorder.none,
                                     hintText: '查单词或搜索文章',
                                   ),
-                                  onChanged: widget.controller.updateQuery,
+                                  onChanged: (value) {
+                                    widget.controller.updateQuery(value);
+                                  },
                                 ),
                               ),
                             ],

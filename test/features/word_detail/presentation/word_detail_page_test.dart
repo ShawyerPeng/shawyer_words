@@ -72,6 +72,49 @@ void main() {
     expect(find.text('添加你的学习笔记'), findsOneWidget);
   });
 
+  testWidgets('renders imported dictionary panel html content when expanded', (
+    tester,
+  ) async {
+    final controller = WordDetailController(
+      detailRepository: _FakeWordDetailRepository(
+        detail: WordDetail(
+          word: 'abandon',
+          dictionaryPanels: const <DictionaryEntryDetail>[
+            DictionaryEntryDetail(
+              dictionaryId: 'collins',
+              dictionaryName: 'Collins',
+              word: 'abandon',
+              rawContent:
+                  '<div>Line 1</div><div><b>Line 2</b><br/>Line 3</div>',
+            ),
+          ],
+        ),
+      ),
+      knowledgeRepository: _FakeWordKnowledgeRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WordDetailPage(
+          word: 'abandon',
+          controller: controller,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Collins'));
+    await tester.pump();
+
+    await tester.tap(find.text('Collins'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Line 1'), findsOneWidget);
+    expect(find.textContaining('Line 2'), findsOneWidget);
+    expect(find.textContaining('Line 3'), findsOneWidget);
+    expect(find.textContaining('<div>'), findsNothing);
+  });
+
   testWidgets('supports favorite toggle and known confirmation sheet', (
     tester,
   ) async {

@@ -682,21 +682,50 @@ class _DictionarySection extends StatelessWidget {
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      panel.errorMessage ?? panel.rawContent,
-                      style: TextStyle(
-                        color: panel.errorMessage == null
-                            ? const Color(0xFF475467)
-                            : const Color(0xFFC25555),
-                        height: 1.6,
-                      ),
-                    ),
+                    child: panel.errorMessage == null
+                        ? _SimpleHtmlText(html: panel.rawContent)
+                        : Text(
+                            panel.errorMessage!,
+                            style: const TextStyle(
+                              color: Color(0xFFC25555),
+                              height: 1.6,
+                            ),
+                          ),
                   ),
                 ],
               ),
             ),
           )
           .toList(growable: false),
+    );
+  }
+}
+
+class _SimpleHtmlText extends StatelessWidget {
+  const _SimpleHtmlText({required this.html});
+
+  final String html;
+
+  @override
+  Widget build(BuildContext context) {
+    final parsed = html
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(
+          RegExp(r'</(div|p|li|section|article|h\d|b)>', caseSensitive: false),
+          '\n',
+        )
+        .replaceAll(RegExp(r'<[^>]+>'), '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll(RegExp(r'\n\s*\n+'), '\n')
+        .trim();
+
+    return SelectableText(
+      parsed,
+      style: const TextStyle(
+        color: Color(0xFF475467),
+        height: 1.6,
+      ),
     );
   }
 }

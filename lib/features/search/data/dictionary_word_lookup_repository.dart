@@ -24,7 +24,7 @@ class DictionaryWordLookupRepository implements WordLookupRepository {
   }
 
   @override
-  List<WordEntry> searchWords(String query, {int limit = 20}) {
+  Future<List<WordEntry>> searchWords(String query, {int limit = 20}) async {
     final importedEntries = _dictionaryController.state.entries;
     if (importedEntries.isNotEmpty) {
       return rankWordEntries(importedEntries, query, limit: limit);
