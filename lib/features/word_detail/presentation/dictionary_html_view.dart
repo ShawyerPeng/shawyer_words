@@ -21,8 +21,11 @@ class DictionaryHtmlView extends StatefulWidget {
 }
 
 class _DictionaryHtmlViewState extends State<DictionaryHtmlView> {
+  static const double _minContentHeight = 120;
+
   late final WebViewController _controller;
   late String _loadedSignature;
+  double _contentHeight = _minContentHeight;
 
   @override
   void initState() {
@@ -30,6 +33,27 @@ class _DictionaryHtmlViewState extends State<DictionaryHtmlView> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
+      ..addJavaScriptChannel(
+        'ShawyerResize',
+        onMessageReceived: (message) {
+          final height = double.tryParse(message.message);
+          if (height == null) {
+            return;
+          }
+          final normalizedHeight = height < _minContentHeight
+              ? _minContentHeight
+              : height;
+          if ((normalizedHeight - _contentHeight).abs() < 8) {
+            return;
+          }
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _contentHeight = normalizedHeight;
+          });
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
@@ -66,6 +90,11 @@ class _DictionaryHtmlViewState extends State<DictionaryHtmlView> {
   Future<void> _loadCurrentDocument() async {
     final document = buildDictionaryHtmlDocument(widget.panel);
     _loadedSignature = _signatureFor(widget.panel);
+    if (mounted) {
+      setState(() {
+        _contentHeight = _minContentHeight;
+      });
+    }
     await _controller.loadHtmlString(document.html, baseUrl: document.baseUrl);
   }
 
@@ -104,7 +133,7 @@ class _DictionaryHtmlViewState extends State<DictionaryHtmlView> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 360,
+      height: _contentHeight,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: WebViewWidget(

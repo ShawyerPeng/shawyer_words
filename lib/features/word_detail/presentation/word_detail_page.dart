@@ -207,29 +207,42 @@ class _WordDetailPageState extends State<WordDetailPage> {
 
     return [
       for (final panel in panels) ...[
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _DictionaryHeaderDelegate(
+        if (_expandedDictionaryIds.contains(panel.dictionaryId))
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _DictionaryHeaderDelegate(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: _DictionaryHeaderCard(
+                  panel: panel,
+                  expanded: true,
+                  onTap: () {
+                    setState(() {
+                      _expandedDictionaryIds.remove(panel.dictionaryId);
+                    });
+                  },
+                ),
+              ),
+            ),
+          )
+        else
+          SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: _DictionaryHeaderCard(
                 panel: panel,
-                expanded: _expandedDictionaryIds.contains(panel.dictionaryId),
+                expanded: false,
                 onTap: () {
                   setState(() {
-                    if (_expandedDictionaryIds.contains(panel.dictionaryId)) {
-                      _expandedDictionaryIds.remove(panel.dictionaryId);
-                    } else {
-                      _expandedDictionaryIds.add(panel.dictionaryId);
-                    }
+                    _expandedDictionaryIds.add(panel.dictionaryId);
                   });
                 },
               ),
             ),
           ),
-        ),
-        if (_expandedDictionaryIds.contains(panel.dictionaryId))
-          SliverToBoxAdapter(
+        SliverToBoxAdapter(
+          child: Offstage(
+            offstage: !_expandedDictionaryIds.contains(panel.dictionaryId),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Container(
@@ -247,8 +260,10 @@ class _WordDetailPageState extends State<WordDetailPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: panel.errorMessage == null
-                      ? SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.72,
+                      ? KeyedSubtree(
+                          key: ValueKey(
+                            'dictionary-panel-${panel.dictionaryId}',
+                          ),
                           child: htmlViewBuilder(panel, _openLinkedWord, (
                             soundUrl,
                           ) {
@@ -266,6 +281,7 @@ class _WordDetailPageState extends State<WordDetailPage> {
               ),
             ),
           ),
+        ),
       ],
     ];
   }

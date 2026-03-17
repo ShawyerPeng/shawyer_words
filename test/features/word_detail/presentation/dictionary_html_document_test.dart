@@ -36,5 +36,17 @@ void main() {
       ),
     );
     expect(document.html, contains('<div class="entry">content</div>'));
+    expect(document.html, contains('<div id="shawyer-root">'));
+    expect(document.html, contains('window.__shawyerScheduleHeightReport'));
+    expect(document.html, contains("document.getElementById('shawyer-root')"));
+    expect(
+      document.html,
+      contains(
+        "window.addEventListener('load', function() {\n        setTimeout(function() { __shawyerScheduleHeightReport(0); }, 120);",
+      ),
+    );
+    expect(document.html, isNot(contains("__shawyerScheduleHeightReport(0);\n        setTimeout(function() { __shawyerScheduleHeightReport(0); }, 120);")));
+    expect(document.html, contains("document.addEventListener('click'"));
+    expect(document.html, isNot(contains('clientHeight')));
   });
 }
