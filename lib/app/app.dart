@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide SearchController;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart' as sqflite;
 import 'package:shawyer_words/app/app_shell.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_library_controller.dart';
@@ -25,6 +26,7 @@ import 'package:shawyer_words/features/study_plan/application/study_plan_control
 import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repository.dart';
 import 'package:shawyer_words/features/word_detail/application/word_detail_controller.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_entry_lookup_repository.dart';
+import 'package:shawyer_words/features/word_detail/data/lexdb_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/platform_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/sqlite_word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
@@ -41,6 +43,9 @@ class ShawyerWordsApp extends StatelessWidget {
     StudyRepository? studyRepository,
     StudyPlanController? studyPlanController,
     WordDetailPageBuilder? wordDetailPageBuilder,
+    String? lexDbPath,
+    String lexDbDictionaryId = 'lexdb',
+    String lexDbDictionaryName = 'LexDB',
   }) {
     final dictionaryCatalog = FileSystemDictionaryCatalog(
       rootPathResolver: _dictionaryRootPath,
@@ -80,6 +85,14 @@ class ShawyerWordsApp extends StatelessWidget {
                 libraryRepository: dictionaryLibraryRepository,
                 catalog: dictionaryCatalog,
               ),
+              lexDbRepository: lexDbPath == null
+                  ? null
+                  : LexDbWordDetailRepository(
+                      databasePath: lexDbPath,
+                      dictionaryId: lexDbDictionaryId,
+                      dictionaryName: lexDbDictionaryName,
+                      databaseFactory: sqflite.databaseFactory,
+                    ),
             ),
             knowledgeRepository: wordKnowledgeRepository,
           ),

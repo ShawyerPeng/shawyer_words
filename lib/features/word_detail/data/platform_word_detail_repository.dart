@@ -1,24 +1,39 @@
 import 'package:shawyer_words/features/word_detail/data/dictionary_entry_lookup_repository.dart';
+import 'package:shawyer_words/features/word_detail/data/lexdb_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
+import 'package:shawyer_words/features/word_detail/domain/lexdb_entry_detail.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_detail.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_detail_repository.dart';
 
 class PlatformWordDetailRepository implements WordDetailRepository {
   PlatformWordDetailRepository({
     required DictionaryEntryLookupRepository lookupRepository,
-  }) : _lookupRepository = lookupRepository;
+    LexDbWordDetailRepository? lexDbRepository,
+  }) : _lookupRepository = lookupRepository,
+       _lexDbRepository = lexDbRepository;
 
   final DictionaryEntryLookupRepository _lookupRepository;
+  final LexDbWordDetailRepository? _lexDbRepository;
 
   @override
   Future<WordDetail> load(String word) async {
-    final details = await _lookupRepository.lookupAcrossVisibleDictionaries(word);
-    return aggregate(word: word, details: details);
+    final details = await _lookupRepository.lookupAcrossVisibleDictionaries(
+      word,
+    );
+    List<LexDbEntryDetail> lexDbEntries = const <LexDbEntryDetail>[];
+    try {
+      lexDbEntries =
+          await _lexDbRepository?.lookup(word) ?? const <LexDbEntryDetail>[];
+    } catch (_) {
+      lexDbEntries = const <LexDbEntryDetail>[];
+    }
+    return aggregate(word: word, details: details, lexDbEntries: lexDbEntries);
   }
 
   static WordDetail aggregate({
     required String word,
     required List<DictionaryEntryDetail> details,
+    List<LexDbEntryDetail> lexDbEntries = const <LexDbEntryDetail>[],
   }) {
     final normalizedWord = word.trim().toLowerCase();
     final definitions = <WordSense>[];
@@ -44,9 +59,8 @@ class PlatformWordDetailRepository implements WordDetailRepository {
     return WordDetail(
       word: normalizedWord,
       basic: WordBasicSummary(
-        headword: _firstNonEmpty(
-              details.map((detail) => detail.basic.headword),
-            ) ??
+        headword:
+            _firstNonEmpty(details.map((detail) => detail.basic.headword)) ??
             normalizedWord,
         pronunciationUs: _firstNonEmpty(
           details.map((detail) => detail.basic.pronunciationUs),
@@ -54,18 +68,15 @@ class PlatformWordDetailRepository implements WordDetailRepository {
         pronunciationUk: _firstNonEmpty(
           details.map((detail) => detail.basic.pronunciationUk),
         ),
-        audioUs: _firstNonEmpty(
-          details.map((detail) => detail.basic.audioUs),
-        ),
-        audioUk: _firstNonEmpty(
-          details.map((detail) => detail.basic.audioUk),
-        ),
+        audioUs: _firstNonEmpty(details.map((detail) => detail.basic.audioUs)),
+        audioUk: _firstNonEmpty(details.map((detail) => detail.basic.audioUk)),
         frequency: _firstNonEmpty(
           details.map((detail) => detail.basic.frequency),
         ),
       ),
       definitions: definitions,
       examples: examples,
+      lexDbEntries: lexDbEntries,
       dictionaryPanels: details,
     );
   }

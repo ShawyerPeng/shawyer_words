@@ -4,6 +4,7 @@ import 'package:shawyer_words/features/word_detail/application/word_detail_contr
 import 'package:shawyer_words/features/word_detail/data/dictionary_sound_player.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_sound_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
+import 'package:shawyer_words/features/word_detail/domain/lexdb_entry_detail.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_detail.dart';
 import 'package:shawyer_words/features/word_detail/presentation/dictionary_html_view.dart';
 
@@ -111,6 +112,13 @@ class _WordDetailPageState extends State<WordDetailPage> {
                                 examples: detail.examples,
                               ),
                             ),
+                            if (detail.lexDbEntries.isNotEmpty)
+                              _SectionCard(
+                                title: '结构化词典',
+                                child: _LexDbEntriesSection(
+                                  entries: detail.lexDbEntries,
+                                ),
+                              ),
                             const _SectionCard(
                               title: '相关词',
                               child: _PlaceholderBody(
@@ -780,6 +788,255 @@ class _NoteSection extends StatelessWidget {
         const SizedBox(height: 12),
         OutlinedButton(onPressed: onEdit, child: const Text('编辑笔记')),
       ],
+    );
+  }
+}
+
+class _LexDbEntriesSection extends StatelessWidget {
+  const _LexDbEntriesSection({required this.entries});
+
+  final List<LexDbEntryDetail> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < entries.length; index += 1) ...[
+          if (index > 0) const SizedBox(height: 24),
+          _LexDbEntryCard(entry: entries[index]),
+        ],
+      ],
+    );
+  }
+}
+
+class _LexDbEntryCard extends StatelessWidget {
+  const _LexDbEntryCard({required this.entry});
+
+  final LexDbEntryDetail entry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          entry.dictionaryName,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          entry.headwordDisplay ?? entry.headword,
+          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+        ),
+        if (entry.pronunciations.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: entry.pronunciations
+                .map(
+                  (pronunciation) => _InfoChip(
+                    label:
+                        '${pronunciation.variant.toUpperCase()} ${pronunciation.phonetic ?? ''}'
+                            .trim(),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ],
+        if (entry.senses.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          for (final sense in entry.senses) ...[
+            _LexDbSenseCard(sense: sense),
+            const SizedBox(height: 14),
+          ],
+        ],
+        if (entry.collocations.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          const Text(
+            '搭配',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          for (final collocation in entry.collocations) ...[
+            _LexDbCollocationCard(collocation: collocation),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _LexDbSenseCard extends StatelessWidget {
+  const _LexDbSenseCard({required this.sense});
+
+  final LexDbSense sense;
+
+  @override
+  Widget build(BuildContext context) {
+    final titleParts = <String>[
+      if (_hasValue(sense.number)) sense.number!.trim(),
+      if (_hasValue(sense.signpost)) sense.signpost!.trim(),
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (titleParts.isNotEmpty)
+            Text(
+              titleParts.join(' '),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+          if (_hasValue(sense.definition)) ...[
+            const SizedBox(height: 8),
+            Text(sense.definition, style: const TextStyle(height: 1.6)),
+          ],
+          if (_hasValue(sense.definitionZh)) ...[
+            const SizedBox(height: 6),
+            Text(
+              sense.definitionZh!,
+              style: const TextStyle(color: Color(0xFF667085), height: 1.6),
+            ),
+          ],
+          if (sense.examplesBeforePatterns.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final example in sense.examplesBeforePatterns) ...[
+              _LexDbExampleBlock(example: example),
+              const SizedBox(height: 8),
+            ],
+          ],
+          if (sense.grammarPatterns.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            for (final pattern in sense.grammarPatterns) ...[
+              _LexDbGrammarPatternBlock(pattern: pattern),
+              const SizedBox(height: 8),
+            ],
+          ],
+          if (sense.examplesAfterPatterns.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            for (final example in sense.examplesAfterPatterns) ...[
+              _LexDbExampleBlock(example: example),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LexDbExampleBlock extends StatelessWidget {
+  const _LexDbExampleBlock({required this.example});
+
+  final LexDbExample example;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(example.text, style: const TextStyle(height: 1.6)),
+        if (_hasValue(example.textZh))
+          Text(
+            example.textZh!,
+            style: const TextStyle(color: Color(0xFF667085), height: 1.6),
+          ),
+      ],
+    );
+  }
+}
+
+class _LexDbGrammarPatternBlock extends StatelessWidget {
+  const _LexDbGrammarPatternBlock({required this.pattern});
+
+  final LexDbGrammarPattern pattern;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            pattern.pattern,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          if (_hasValue(pattern.gloss)) ...[
+            const SizedBox(height: 4),
+            Text(
+              pattern.gloss!,
+              style: const TextStyle(color: Color(0xFF667085), height: 1.5),
+            ),
+          ],
+          if (pattern.examples.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            for (final example in pattern.examples) ...[
+              _LexDbExampleBlock(example: example),
+              const SizedBox(height: 6),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LexDbCollocationCard extends StatelessWidget {
+  const _LexDbCollocationCard({required this.collocation});
+
+  final LexDbCollocation collocation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            collocation.collocate,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          if (_hasValue(collocation.grammar)) ...[
+            const SizedBox(height: 6),
+            Text(
+              collocation.grammar!,
+              style: const TextStyle(color: Color(0xFF667085)),
+            ),
+          ],
+          if (_hasValue(collocation.definition)) ...[
+            const SizedBox(height: 6),
+            Text(collocation.definition!, style: const TextStyle(height: 1.6)),
+          ],
+          if (collocation.examples.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            for (final example in collocation.examples) ...[
+              _LexDbExampleBlock(example: example),
+              const SizedBox(height: 6),
+            ],
+          ],
+        ],
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:shawyer_words/features/word_detail/application/word_detail_contr
 import 'package:shawyer_words/features/word_detail/data/dictionary_sound_player.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_sound_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
+import 'package:shawyer_words/features/word_detail/domain/lexdb_entry_detail.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_detail.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
@@ -51,7 +52,13 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: WordDetailPage(word: 'abandon', controller: controller),
+          home: WordDetailPage(
+            word: 'abandon',
+            controller: controller,
+            dictionaryHtmlViewBuilder: (panel, onEntryLinkTap, onSoundLinkTap) {
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -123,10 +130,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Collins'));
-      await tester.pump();
-
-      await tester.tap(find.text('Collins'));
+      await _scrollUntilVisible(tester, find.textContaining('Collins'));
+      await tester.tap(find.textContaining('Collins'));
       await tester.pumpAndSettle();
 
       expect(
@@ -141,6 +146,72 @@ void main() {
       expect(capturedDocument.html, contains('theme.js'));
     },
   );
+
+  testWidgets('renders structured lexdb sections when present', (tester) async {
+    final controller = WordDetailController(
+      detailRepository: _FakeWordDetailRepository(
+        detail: const WordDetail(
+          word: 'abandon',
+          lexDbEntries: <LexDbEntryDetail>[
+            LexDbEntryDetail(
+              dictionaryId: 'lexdb',
+              dictionaryName: 'Longman',
+              headword: 'abandon',
+              headwordDisplay: 'a·ban·don',
+              pronunciations: <LexDbPronunciation>[
+                LexDbPronunciation(variant: 'uk', phonetic: '/əˈbændən/'),
+              ],
+              senses: <LexDbSense>[
+                LexDbSense(
+                  id: 1,
+                  number: '1',
+                  signpost: 'LEAVE',
+                  definition: 'to leave a place, thing, or person',
+                  definitionZh: '离弃；抛弃',
+                  examplesBeforePatterns: <LexDbExample>[
+                    LexDbExample(
+                      text: 'He abandoned the car.',
+                      textZh: '他弃车而去。',
+                    ),
+                  ],
+                ),
+              ],
+              collocations: <LexDbCollocation>[
+                LexDbCollocation(
+                  collocate: 'abandon hope',
+                  grammar: 'VERBS',
+                  definition: 'to stop hoping completely',
+                  examples: <LexDbExample>[
+                    LexDbExample(text: 'The doctors never abandoned hope.'),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      knowledgeRepository: _FakeWordKnowledgeRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WordDetailPage(word: 'abandon', controller: controller),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Longman'), findsOneWidget);
+    expect(find.text('a·ban·don'), findsOneWidget);
+    expect(find.textContaining('/əˈbændən/'), findsOneWidget);
+    expect(find.text('1 LEAVE'), findsOneWidget);
+    expect(find.text('to leave a place, thing, or person'), findsOneWidget);
+    expect(find.text('离弃；抛弃'), findsOneWidget);
+    expect(find.text('He abandoned the car.'), findsOneWidget);
+    expect(find.text('他弃车而去。'), findsOneWidget);
+    expect(find.text('abandon hope'), findsOneWidget);
+    expect(find.text('to stop hoping completely'), findsOneWidget);
+    expect(find.text('The doctors never abandoned hope.'), findsOneWidget);
+  });
 
   testWidgets('expands dictionary inline without immersive overlay', (
     tester,
@@ -178,7 +249,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Collins'));
+    await _scrollUntilVisible(tester, find.textContaining('Collins'));
+    await tester.tap(find.textContaining('Collins'));
     await tester.pumpAndSettle();
 
     expect(
@@ -229,9 +301,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _scrollUntilVisible(tester, find.text('Collins'));
     await tester.tap(find.text('Collins'));
     await tester.pumpAndSettle();
 
+    await _scrollUntilVisible(tester, find.text('jump-entry'));
     await tester.tap(find.text('jump-entry'));
     await tester.pumpAndSettle();
 
@@ -277,11 +351,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _scrollUntilVisible(tester, find.text('Collins'));
     await tester.tap(find.text('Collins'));
     await tester.pumpAndSettle();
 
+    await _scrollUntilVisible(tester, find.text('play-sound'));
     await tester.tap(find.text('play-sound'));
     await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(soundRepository.lastSoundUrl, 'sound://example.mp3');
     expect(soundRepository.lastPanel?.dictionaryId, 'collins');
@@ -410,7 +487,7 @@ class _FakeDictionarySoundRepository extends DictionarySoundRepository {
     final file = File(
       '${Directory.systemTemp.path}/fake-dict-sound-${DateTime.now().microsecondsSinceEpoch}.mp3',
     );
-    await file.writeAsBytes(const <int>[1, 2, 3], flush: true);
+    file.writeAsBytesSync(const <int>[1, 2, 3], flush: true);
     return file;
   }
 }
@@ -427,4 +504,13 @@ class _FakeDictionarySoundPlayer extends DictionarySoundPlayer {
 
   @override
   Future<void> dispose() async {}
+}
+
+Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:shawyer_words/features/dictionary/data/file_system_dictionary_catalog.dart';
 import 'package:shawyer_words/features/dictionary/data/mdx_dictionary_parser.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog.dart';
@@ -11,8 +12,11 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_library_repo
 import 'package:shawyer_words/features/dictionary/domain/dictionary_manifest.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_entry_lookup_repository.dart';
+import 'package:shawyer_words/features/word_detail/data/lexdb_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/platform_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
+import 'package:shawyer_words/features/word_detail/domain/lexdb_entry_detail.dart';
+import 'package:shawyer_words/features/word_detail/domain/word_detail.dart';
 
 void main() {
   group('DictionaryEntryLookupRepository', () {
@@ -198,6 +202,32 @@ void main() {
   });
 
   group('PlatformWordDetailRepository', () {
+    test('word detail carries lexdb entries alongside dictionary panels', () {
+      const detail = WordDetail(
+        word: 'abandon',
+        dictionaryPanels: <DictionaryEntryDetail>[
+          DictionaryEntryDetail(
+            dictionaryId: 'html',
+            dictionaryName: 'HTML Dictionary',
+            word: 'abandon',
+            rawContent: '<p>html</p>',
+          ),
+        ],
+        lexDbEntries: <LexDbEntryDetail>[
+          LexDbEntryDetail(
+            dictionaryId: 'lexdb',
+            dictionaryName: 'LexDB',
+            headword: 'abandon',
+            headwordDisplay: 'a·ban·don',
+          ),
+        ],
+      );
+
+      expect(detail.dictionaryPanels, hasLength(1));
+      expect(detail.lexDbEntries, hasLength(1));
+      expect(detail.lexDbEntries.single.headword, 'abandon');
+    });
+
     test(
       'aggregates first non-empty basic fields and de-duplicates content',
       () async {
@@ -248,6 +278,14 @@ void main() {
               ],
             ),
           ]),
+          lexDbRepository: _FakeLexDbWordDetailRepository(<LexDbEntryDetail>[
+            const LexDbEntryDetail(
+              dictionaryId: 'lexdb',
+              dictionaryName: 'LexDB',
+              headword: 'abandon',
+              headwordDisplay: 'a·ban·don',
+            ),
+          ]),
         );
 
         final detail = await repository.load('abandon');
@@ -268,6 +306,36 @@ void main() {
           WordExample(english: 'Abandon all doubt.', translationZh: '丢开所有怀疑。'),
         ]);
         expect(detail.dictionaryPanels, hasLength(2));
+        expect(detail.lexDbEntries, const <LexDbEntryDetail>[
+          LexDbEntryDetail(
+            dictionaryId: 'lexdb',
+            dictionaryName: 'LexDB',
+            headword: 'abandon',
+            headwordDisplay: 'a·ban·don',
+          ),
+        ]);
+      },
+    );
+
+    test(
+      'ignores lexdb lookup failures and preserves dictionary details',
+      () async {
+        final repository = PlatformWordDetailRepository(
+          lookupRepository: _FakeLookupRepository(<DictionaryEntryDetail>[
+            const DictionaryEntryDetail(
+              dictionaryId: 'primary',
+              dictionaryName: 'Primary',
+              word: 'abandon',
+              rawContent: '<p>primary</p>',
+            ),
+          ]),
+          lexDbRepository: _ThrowingLexDbWordDetailRepository(),
+        );
+
+        final detail = await repository.load('abandon');
+
+        expect(detail.dictionaryPanels, hasLength(1));
+        expect(detail.lexDbEntries, isEmpty);
       },
     );
   });
@@ -409,5 +477,35 @@ class _FakeLookupRepository extends DictionaryEntryLookupRepository {
     String word,
   ) async {
     return details;
+  }
+}
+
+class _FakeLexDbWordDetailRepository extends LexDbWordDetailRepository {
+  _FakeLexDbWordDetailRepository(this.details)
+    : super(
+        databasePath: ':memory:',
+        dictionaryId: 'lexdb',
+        dictionaryName: 'LexDB',
+        databaseFactory: databaseFactoryFfiNoIsolate,
+      );
+
+  final List<LexDbEntryDetail> details;
+
+  @override
+  Future<List<LexDbEntryDetail>> lookup(String word) async => details;
+}
+
+class _ThrowingLexDbWordDetailRepository extends LexDbWordDetailRepository {
+  _ThrowingLexDbWordDetailRepository()
+    : super(
+        databasePath: ':memory:',
+        dictionaryId: 'lexdb',
+        dictionaryName: 'LexDB',
+        databaseFactory: databaseFactoryFfiNoIsolate,
+      );
+
+  @override
+  Future<List<LexDbEntryDetail>> lookup(String word) async {
+    throw StateError('lexdb failed');
   }
 }
