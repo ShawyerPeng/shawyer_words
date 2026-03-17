@@ -1,22 +1,36 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study_plan/domain/official_vocabulary_book.dart';
 import 'package:shawyer_words/features/study_plan/domain/study_plan_models.dart';
 import 'package:shawyer_words/features/study_plan/domain/study_plan_repository.dart';
 
+typedef RemoteVocabularyLoader = Future<String> Function(Uri uri);
+
 class InMemoryStudyPlanRepository implements StudyPlanRepository {
   InMemoryStudyPlanRepository._({
     required List<OfficialVocabularyBook> officialBooks,
+    required RemoteVocabularyLoader remoteVocabularyLoader,
     String? currentBookId,
     Set<String>? myBookIds,
   }) : _officialBooks = officialBooks,
+       _remoteVocabularyLoader = remoteVocabularyLoader,
        _currentBookId = currentBookId,
        _myBookIds = myBookIds ?? <String>{};
 
-  factory InMemoryStudyPlanRepository.seeded() {
-    return InMemoryStudyPlanRepository._(officialBooks: _seedBooks);
+  factory InMemoryStudyPlanRepository.seeded({
+    RemoteVocabularyLoader? remoteVocabularyLoader,
+  }) {
+    return InMemoryStudyPlanRepository._(
+      officialBooks: List<OfficialVocabularyBook>.from(_seedBooks),
+      remoteVocabularyLoader:
+          remoteVocabularyLoader ?? InMemoryStudyPlanRepository._loadRemoteText,
+    );
   }
 
   final List<OfficialVocabularyBook> _officialBooks;
+  final RemoteVocabularyLoader _remoteVocabularyLoader;
   final Set<String> _myBookIds;
   String? _currentBookId;
 
@@ -50,6 +64,10 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
       throw ArgumentError.value(bookId, 'bookId', 'Unknown vocabulary book');
     }
 
+    if (book.isRemote && book.entries.isEmpty) {
+      await _loadRemoteBook(book);
+    }
+
     _myBookIds.add(bookId);
     _currentBookId = bookId;
   }
@@ -66,6 +84,73 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
     }
 
     return null;
+  }
+
+  Future<void> _loadRemoteBook(OfficialVocabularyBook book) async {
+    final sourceUrl = book.sourceUrl;
+    if (sourceUrl == null) {
+      return;
+    }
+
+    final rawText = await _remoteVocabularyLoader(Uri.parse(sourceUrl));
+    final entries = _parseRemoteEntries(book.id, rawText);
+    if (entries.isEmpty) {
+      throw StateError('词汇表内容为空');
+    }
+
+    final index = _officialBooks.indexWhere((item) => item.id == book.id);
+    if (index == -1) {
+      return;
+    }
+
+    _officialBooks[index] = book.copyWith(
+      entries: entries,
+      wordCount: entries.length,
+    );
+  }
+
+  static List<WordEntry> _parseRemoteEntries(String bookId, String rawText) {
+    final entries = <WordEntry>[];
+    final seenWords = <String>{};
+
+    for (final line in const LineSplitter().convert(rawText)) {
+      final word = line.trim();
+      if (word.isEmpty || !seenWords.add(word)) {
+        continue;
+      }
+
+      entries.add(
+        WordEntry(
+          id: '$bookId-${entries.length + 1}',
+          word: word,
+          pronunciation: '',
+          partOfSpeech: '',
+          definition: '',
+          exampleSentence: '',
+          rawContent: '<p>$word</p>',
+        ),
+      );
+    }
+
+    return List<WordEntry>.unmodifiable(entries);
+  }
+
+  static Future<String> _loadRemoteText(Uri uri) async {
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException(
+          'Request failed with status ${response.statusCode}',
+          uri: uri,
+        );
+      }
+
+      return response.transform(utf8.decoder).join();
+    } finally {
+      client.close(force: true);
+    }
   }
 
   static List<StudyCalendarDay> _buildWeekDays() {
@@ -88,6 +173,17 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
 }
 
 const List<OfficialVocabularyBook> _seedBooks = <OfficialVocabularyBook>[
+  OfficialVocabularyBook(
+    id: 'cet46-remote',
+    category: '四六级',
+    title: 'CET 4+6',
+    subtitle: '外部词汇表导入',
+    wordCount: 0,
+    coverKey: 'mint',
+    entries: <WordEntry>[],
+    sourceUrl:
+        'https://raw.githubusercontent.com/mahavivo/english-wordlists/refs/heads/master/CET_4%2B6_edited.txt',
+  ),
   OfficialVocabularyBook(
     id: 'cet4-core',
     category: '四级',

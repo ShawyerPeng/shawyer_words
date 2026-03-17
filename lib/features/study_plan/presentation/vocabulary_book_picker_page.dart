@@ -76,6 +76,13 @@ class _VocabularyBookPickerPageState extends State<VocabularyBookPickerPage> {
                         ),
                       ),
                     ),
+                    if (state.importStatus != VocabularyImportStatus.idle) ...[
+                      const SizedBox(height: 14),
+                      _ImportStatusBanner(
+                        status: state.importStatus,
+                        message: state.importMessage ?? '',
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     SizedBox(
                       height: 44,
@@ -136,8 +143,18 @@ class _VocabularyBookPickerPageState extends State<VocabularyBookPickerPage> {
                           return _PickerBookTile(
                             book: book,
                             onTap: () async {
-                              await widget.controller.selectBook(book.id);
-                              if (context.mounted) {
+                              final shouldPop = await widget.controller
+                                  .selectBook(book.id);
+                              if (!context.mounted || !shouldPop) {
+                                return;
+                              }
+                              if (book.isRemote) {
+                                await Future<void>.delayed(
+                                  const Duration(milliseconds: 600),
+                                );
+                              }
+                              if (context.mounted &&
+                                  Navigator.of(context).canPop()) {
                                 Navigator.of(context).pop();
                               }
                             },
@@ -152,6 +169,73 @@ class _VocabularyBookPickerPageState extends State<VocabularyBookPickerPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _ImportStatusBanner extends StatelessWidget {
+  const _ImportStatusBanner({required this.status, required this.message});
+
+  final VocabularyImportStatus status;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final (backgroundColor, foregroundColor, icon) = switch (status) {
+      VocabularyImportStatus.importing => (
+        const Color(0xFFEAF8F2),
+        const Color(0xFF0C8B64),
+        const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      VocabularyImportStatus.success => (
+        const Color(0xFFEAF8F2),
+        const Color(0xFF0C8B64),
+        const Icon(Icons.check_circle_rounded, size: 18),
+      ),
+      VocabularyImportStatus.failure => (
+        const Color(0xFFFFF1F0),
+        const Color(0xFFB9382F),
+        const Icon(Icons.error_rounded, size: 18),
+      ),
+      VocabularyImportStatus.idle => (
+        Colors.transparent,
+        Colors.transparent,
+        const SizedBox.shrink(),
+      ),
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          IconTheme(
+            data: IconThemeData(color: foregroundColor),
+            child: DefaultTextStyle(
+              style: TextStyle(color: foregroundColor),
+              child: icon,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: foregroundColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

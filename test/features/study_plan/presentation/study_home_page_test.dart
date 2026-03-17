@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_import_preview.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_import_result.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_package.dart';
+import 'package:shawyer_words/features/dictionary/domain/dictionary_preview_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
@@ -18,6 +20,7 @@ void main() {
         ShawyerWordsApp(
           controller: DictionaryController(
             dictionaryRepository: _FakeDictionaryRepository(),
+            previewRepository: _FakeDictionaryPreviewRepository(),
             studyRepository: _FakeStudyRepository(),
           ),
           studyPlanController: StudyPlanController(
@@ -80,4 +83,30 @@ class _FakeStudyRepository implements StudyRepository {
     required String entryId,
     required StudyDecisionType decision,
   }) async {}
+}
+
+class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
+  @override
+  Future<void> disposePreview(DictionaryImportPreview preview) async {}
+
+  @override
+  Future<WordEntry?> loadEntry({
+    required DictionaryImportPreview preview,
+    required String key,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<DictionaryPreviewPage> loadPage({
+    required DictionaryImportPreview preview,
+    required int pageNumber,
+  }) async {
+    return const DictionaryPreviewPage(pageNumber: 1, entries: []);
+  }
+
+  @override
+  Future<DictionaryImportPreview> preparePreview(List<String> sourcePaths) {
+    throw UnimplementedError();
+  }
 }
