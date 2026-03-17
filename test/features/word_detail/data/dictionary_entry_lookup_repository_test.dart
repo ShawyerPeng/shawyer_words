@@ -55,12 +55,11 @@ void main() {
         ),
       );
 
-      final details = await repository.lookupAcrossVisibleDictionaries('abandon');
+      final details = await repository.lookupAcrossVisibleDictionaries(
+        'abandon',
+      );
 
-      expect(recordedPaths, <String>[
-        packages[2].mdxPath,
-        packages[0].mdxPath,
-      ]);
+      expect(recordedPaths, <String>[packages[2].mdxPath, packages[0].mdxPath]);
       expect(details.map((detail) => detail.dictionaryId).toList(), <String>[
         'gamma',
         'alpha',
@@ -68,139 +67,209 @@ void main() {
       expect(details.every((detail) => detail.dictionaryId != 'beta'), isTrue);
     });
 
-    test('keeps successful dictionary hits when one dictionary fails', () async {
-      final packages = <DictionaryPackage>[
-        await _writePackage(tempRoot.path, id: 'working', name: 'Working'),
-        await _writePackage(tempRoot.path, id: 'broken', name: 'Broken'),
-      ];
-      final repository = DictionaryEntryLookupRepository(
-        libraryRepository: _FakeDictionaryLibraryRepository(
-          items: <DictionaryLibraryItem>[
-            _libraryItem(packages[0], isVisible: true, sortIndex: 0),
-            _libraryItem(packages[1], isVisible: true, sortIndex: 1),
-          ],
-        ),
-        catalog: _FakeDictionaryCatalog(packages),
-        readerFactory: (path) {
-          if (path == packages[1].mdxPath) {
+    test(
+      'keeps successful dictionary hits when one dictionary fails',
+      () async {
+        final packages = <DictionaryPackage>[
+          await _writePackage(tempRoot.path, id: 'working', name: 'Working'),
+          await _writePackage(tempRoot.path, id: 'broken', name: 'Broken'),
+        ];
+        final repository = DictionaryEntryLookupRepository(
+          libraryRepository: _FakeDictionaryLibraryRepository(
+            items: <DictionaryLibraryItem>[
+              _libraryItem(packages[0], isVisible: true, sortIndex: 0),
+              _libraryItem(packages[1], isVisible: true, sortIndex: 1),
+            ],
+          ),
+          catalog: _FakeDictionaryCatalog(packages),
+          readerFactory: (path) {
+            if (path == packages[1].mdxPath) {
+              return _LookupReader(
+                path: path,
+                onLookup: (_) => throw StateError('reader failed'),
+              );
+            }
             return _LookupReader(
               path: path,
-              onLookup: (_) => throw StateError('reader failed'),
-            );
-          }
-          return _LookupReader(
-            path: path,
-            onLookup: (_) => '''
+              onLookup: (_) => '''
 <div class="phonetic">/wɜːkɪŋ/</div>
 <span class="pos">verb</span>
 <div class="definition">有效的</div>
 <div class="example">A working example helps.</div>
 ''',
-          );
-        },
-      );
-
-      final details = await repository.lookupAcrossVisibleDictionaries('working');
-
-      expect(details, hasLength(2));
-      expect(details.first.errorMessage, isNull);
-      expect(details.first.definitions.single.definitionZh, '有效的');
-      expect(details.last.dictionaryId, 'broken');
-      expect(details.last.errorMessage, contains('reader failed'));
-    });
-
-    test('uses current package directory when manifest stores stale absolute paths', () async {
-      final package = await _writePackage(
-        '${tempRoot.path}/imported',
-        id: 'stale',
-        name: 'Stale',
-        manifestRootPath: '/var/mobile/Containers/Data/Application/OLD-ID/Library/Application Support/dictionaries/imported/stale',
-      );
-      final recordedPaths = <String>[];
-      final repository = DictionaryEntryLookupRepository(
-        libraryRepository: _FakeDictionaryLibraryRepository(
-          items: <DictionaryLibraryItem>[
-            _libraryItem(package, isVisible: true, sortIndex: 0),
-          ],
-        ),
-        catalog: FileSystemDictionaryCatalog(rootPath: tempRoot.path),
-        readerFactory: (path) => _LookupReader(
-          path: path,
-          onLookup: (_) {
-            recordedPaths.add(path);
-            return '<div class="definition">resolved from current directory</div>';
+            );
           },
-        ),
-      );
+        );
 
-      final details = await repository.lookupAcrossVisibleDictionaries('abandon');
+        final details = await repository.lookupAcrossVisibleDictionaries(
+          'working',
+        );
 
-      expect(details, hasLength(1));
-      expect(details.single.errorMessage, isNull);
-      expect(recordedPaths, <String>[
-        '${tempRoot.path}/imported/stale/source/stale.mdx',
-      ]);
-    });
+        expect(details, hasLength(2));
+        expect(details.first.errorMessage, isNull);
+        expect(details.first.definitions.single.definitionZh, '有效的');
+        expect(details.last.dictionaryId, 'broken');
+        expect(details.last.errorMessage, contains('reader failed'));
+      },
+    );
+
+    test(
+      'uses current package directory when manifest stores stale absolute paths',
+      () async {
+        final package = await _writePackage(
+          '${tempRoot.path}/imported',
+          id: 'stale',
+          name: 'Stale',
+          manifestRootPath:
+              '/var/mobile/Containers/Data/Application/OLD-ID/Library/Application Support/dictionaries/imported/stale',
+        );
+        final recordedPaths = <String>[];
+        final repository = DictionaryEntryLookupRepository(
+          libraryRepository: _FakeDictionaryLibraryRepository(
+            items: <DictionaryLibraryItem>[
+              _libraryItem(package, isVisible: true, sortIndex: 0),
+            ],
+          ),
+          catalog: FileSystemDictionaryCatalog(rootPath: tempRoot.path),
+          readerFactory: (path) => _LookupReader(
+            path: path,
+            onLookup: (_) {
+              recordedPaths.add(path);
+              return '<div class="definition">resolved from current directory</div>';
+            },
+          ),
+        );
+
+        final details = await repository.lookupAcrossVisibleDictionaries(
+          'abandon',
+        );
+
+        expect(details, hasLength(1));
+        expect(details.single.errorMessage, isNull);
+        expect(recordedPaths, <String>[
+          '${tempRoot.path}/imported/stale/source/stale.mdx',
+        ]);
+      },
+    );
+
+    test(
+      'includes imported css and js resources in dictionary details',
+      () async {
+        final package = await _writePackage(
+          tempRoot.path,
+          id: 'collins',
+          name: 'Collins',
+        );
+        await File(
+          '${package.resourcesPath}/theme.css',
+        ).writeAsString('body {}');
+        await File(
+          '${package.resourcesPath}/switch.js',
+        ).writeAsString('console.log(1);');
+
+        final repository = DictionaryEntryLookupRepository(
+          libraryRepository: _FakeDictionaryLibraryRepository(
+            items: <DictionaryLibraryItem>[
+              _libraryItem(package, isVisible: true, sortIndex: 0),
+            ],
+          ),
+          catalog: _FakeDictionaryCatalog(<DictionaryPackage>[package]),
+          readerFactory: (path) => _LookupReader(
+            path: path,
+            onLookup: (_) => '<div class="definition">styled</div>',
+          ),
+        );
+
+        final details = await repository.lookupAcrossVisibleDictionaries(
+          'abandon',
+        );
+
+        expect(details, hasLength(1));
+        expect(details.single.resourcesPath, package.resourcesPath);
+        expect(details.single.mddPaths, package.mddPaths);
+        expect(details.single.stylesheetPaths, <String>[
+          '${package.resourcesPath}/theme.css',
+        ]);
+        expect(details.single.scriptPaths, <String>[
+          '${package.resourcesPath}/switch.js',
+        ]);
+      },
+    );
   });
 
   group('PlatformWordDetailRepository', () {
-    test('aggregates first non-empty basic fields and de-duplicates content', () async {
-      final repository = PlatformWordDetailRepository(
-        lookupRepository: _FakeLookupRepository(<DictionaryEntryDetail>[
-          DictionaryEntryDetail(
-            dictionaryId: 'primary',
-            dictionaryName: 'Primary',
-            word: 'abandon',
-            rawContent: '<p>primary</p>',
-            basic: const WordBasicSummary(
-              headword: 'abandon',
-              pronunciationUs: '/əˈbændən/',
+    test(
+      'aggregates first non-empty basic fields and de-duplicates content',
+      () async {
+        final repository = PlatformWordDetailRepository(
+          lookupRepository: _FakeLookupRepository(<DictionaryEntryDetail>[
+            DictionaryEntryDetail(
+              dictionaryId: 'primary',
+              dictionaryName: 'Primary',
+              word: 'abandon',
+              rawContent: '<p>primary</p>',
+              basic: const WordBasicSummary(
+                headword: 'abandon',
+                pronunciationUs: '/əˈbændən/',
+              ),
+              definitions: const <WordSense>[
+                WordSense(partOfSpeech: 'verb', definitionZh: '放弃'),
+              ],
+              examples: const <WordExample>[
+                WordExample(
+                  english: 'They abandon the plan.',
+                  translationZh: '他们放弃了计划。',
+                ),
+              ],
             ),
-            definitions: const <WordSense>[
-              WordSense(partOfSpeech: 'verb', definitionZh: '放弃'),
-            ],
-            examples: const <WordExample>[
-              WordExample(english: 'They abandon the plan.', translationZh: '他们放弃了计划。'),
-            ],
-          ),
-          DictionaryEntryDetail(
-            dictionaryId: 'secondary',
-            dictionaryName: 'Secondary',
-            word: 'abandon',
-            rawContent: '<p>secondary</p>',
-            basic: const WordBasicSummary(
-              headword: 'abandon',
-              pronunciationUk: '/əˈbændən/',
-              frequency: 'CET4',
+            DictionaryEntryDetail(
+              dictionaryId: 'secondary',
+              dictionaryName: 'Secondary',
+              word: 'abandon',
+              rawContent: '<p>secondary</p>',
+              basic: const WordBasicSummary(
+                headword: 'abandon',
+                pronunciationUk: '/əˈbændən/',
+                frequency: 'CET4',
+              ),
+              definitions: const <WordSense>[
+                WordSense(partOfSpeech: 'verb', definitionZh: '放弃'),
+                WordSense(partOfSpeech: 'noun', definitionZh: '放任'),
+              ],
+              examples: const <WordExample>[
+                WordExample(
+                  english: 'They abandon the plan.',
+                  translationZh: '他们放弃了计划。',
+                ),
+                WordExample(
+                  english: 'Abandon all doubt.',
+                  translationZh: '丢开所有怀疑。',
+                ),
+              ],
             ),
-            definitions: const <WordSense>[
-              WordSense(partOfSpeech: 'verb', definitionZh: '放弃'),
-              WordSense(partOfSpeech: 'noun', definitionZh: '放任'),
-            ],
-            examples: const <WordExample>[
-              WordExample(english: 'They abandon the plan.', translationZh: '他们放弃了计划。'),
-              WordExample(english: 'Abandon all doubt.', translationZh: '丢开所有怀疑。'),
-            ],
+          ]),
+        );
+
+        final detail = await repository.load('abandon');
+
+        expect(detail.word, 'abandon');
+        expect(detail.basic.pronunciationUs, '/əˈbændən/');
+        expect(detail.basic.pronunciationUk, '/əˈbændən/');
+        expect(detail.basic.frequency, 'CET4');
+        expect(detail.definitions, const <WordSense>[
+          WordSense(partOfSpeech: 'verb', definitionZh: '放弃'),
+          WordSense(partOfSpeech: 'noun', definitionZh: '放任'),
+        ]);
+        expect(detail.examples, const <WordExample>[
+          WordExample(
+            english: 'They abandon the plan.',
+            translationZh: '他们放弃了计划。',
           ),
-        ]),
-      );
-
-      final detail = await repository.load('abandon');
-
-      expect(detail.word, 'abandon');
-      expect(detail.basic.pronunciationUs, '/əˈbændən/');
-      expect(detail.basic.pronunciationUk, '/əˈbændən/');
-      expect(detail.basic.frequency, 'CET4');
-      expect(detail.definitions, const <WordSense>[
-        WordSense(partOfSpeech: 'verb', definitionZh: '放弃'),
-        WordSense(partOfSpeech: 'noun', definitionZh: '放任'),
-      ]);
-      expect(detail.examples, const <WordExample>[
-        WordExample(english: 'They abandon the plan.', translationZh: '他们放弃了计划。'),
-        WordExample(english: 'Abandon all doubt.', translationZh: '丢开所有怀疑。'),
-      ]);
-      expect(detail.dictionaryPanels, hasLength(2));
-    });
+          WordExample(english: 'Abandon all doubt.', translationZh: '丢开所有怀疑。'),
+        ]);
+        expect(detail.dictionaryPanels, hasLength(2));
+      },
+    );
   });
 }
 
@@ -230,9 +299,9 @@ Future<DictionaryPackage> _writePackage(
         : '$manifestRootPath/resources',
     importedAt: '2026-03-16T00:00:00.000Z',
   );
-  await File('${packageRoot.path}/manifest.json').writeAsString(
-    jsonEncode(manifest.toJson()),
-  );
+  await File(
+    '${packageRoot.path}/manifest.json',
+  ).writeAsString(jsonEncode(manifest.toJson()));
   return manifest.toPackage();
 }
 

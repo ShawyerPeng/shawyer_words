@@ -67,11 +67,13 @@ class ShawyerWordsApp extends StatelessWidget {
     final resolvedDictionaryLibraryController =
         dictionaryLibraryController ??
         DictionaryLibraryController(repository: dictionaryLibraryRepository);
-    final resolvedWordDetailPageBuilder =
+    late final WordDetailPageBuilder resolvedWordDetailPageBuilder;
+    resolvedWordDetailPageBuilder =
         wordDetailPageBuilder ??
         (String word, initialEntry) => WordDetailPage(
           word: word,
           initialEntry: initialEntry,
+          wordDetailPageBuilder: resolvedWordDetailPageBuilder,
           controller: WordDetailController(
             detailRepository: PlatformWordDetailRepository(
               lookupRepository: DictionaryEntryLookupRepository(

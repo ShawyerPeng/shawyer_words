@@ -4,6 +4,10 @@ class DictionaryEntryDetail {
     required this.dictionaryName,
     required this.word,
     required this.rawContent,
+    this.resourcesPath,
+    this.mddPaths = const <String>[],
+    this.stylesheetPaths = const <String>[],
+    this.scriptPaths = const <String>[],
     this.basic = const WordBasicSummary(),
     this.definitions = const <WordSense>[],
     this.examples = const <WordExample>[],
@@ -14,6 +18,10 @@ class DictionaryEntryDetail {
   final String dictionaryName;
   final String word;
   final String rawContent;
+  final String? resourcesPath;
+  final List<String> mddPaths;
+  final List<String> stylesheetPaths;
+  final List<String> scriptPaths;
   final WordBasicSummary basic;
   final List<WordSense> definitions;
   final List<WordExample> examples;
@@ -60,10 +68,7 @@ class WordBasicSummary {
 }
 
 class WordSense {
-  const WordSense({
-    required this.partOfSpeech,
-    required this.definitionZh,
-  });
+  const WordSense({required this.partOfSpeech, required this.definitionZh});
 
   final String partOfSpeech;
   final String definitionZh;
@@ -102,10 +107,6 @@ class WordExample {
   }
 
   @override
-  int get hashCode => Object.hash(
-    english,
-    englishAudio,
-    translationZh,
-    translationAudio,
-  );
+  int get hashCode =>
+      Object.hash(english, englishAudio, translationZh, translationAudio);
 }

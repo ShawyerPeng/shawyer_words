@@ -88,6 +88,10 @@ class DictionaryEntryLookupRepository {
         dictionaryName: dictionaryName,
         word: entry.word,
         rawContent: entry.rawContent,
+        resourcesPath: package.resourcesPath,
+        mddPaths: package.mddPaths,
+        stylesheetPaths: await _resourcePaths(package.resourcesPath, '.css'),
+        scriptPaths: await _resourcePaths(package.resourcesPath, '.js'),
         basic: WordBasicSummary(
           headword: entry.word,
           pronunciationUs: entry.pronunciation,
@@ -103,10 +107,7 @@ class DictionaryEntryLookupRepository {
         examples: entry.exampleSentence == null
             ? const <WordExample>[]
             : <WordExample>[
-                WordExample(
-                  english: entry.exampleSentence!,
-                  translationZh: '',
-                ),
+                WordExample(english: entry.exampleSentence!, translationZh: ''),
               ],
       );
     } finally {
@@ -116,26 +117,17 @@ class DictionaryEntryLookupRepository {
 
   Future<DictionaryPackage> _loadPackage(String rootPath) async {
     final manifestFile = File('$rootPath/manifest.json');
-    final json = jsonDecode(
-      await manifestFile.readAsString(),
-    ) as Map<String, Object?>;
+    final json =
+        jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
     final manifest = DictionaryManifest.fromJson(json);
     return DictionaryPackage(
       id: manifest.id,
       name: manifest.name,
       type: manifest.type,
       rootPath: rootPath,
-      mdxPath: _resolvePath(
-        rootPath: rootPath,
-        manifestPath: manifest.mdxPath,
-      ),
+      mdxPath: _resolvePath(rootPath: rootPath, manifestPath: manifest.mdxPath),
       mddPaths: manifest.mddPaths
-          .map(
-            (path) => _resolvePath(
-              rootPath: rootPath,
-              manifestPath: path,
-            ),
-          )
+          .map((path) => _resolvePath(rootPath: rootPath, manifestPath: path))
           .toList(growable: false),
       resourcesPath: _resolvePath(
         rootPath: rootPath,
@@ -168,10 +160,37 @@ class DictionaryEntryLookupRepository {
     final resourcesMarker = '/resources';
     final resourcesIndex = normalized.lastIndexOf(resourcesMarker);
     if (resourcesIndex >= 0) {
-      final suffix = normalized.substring(resourcesIndex + resourcesMarker.length);
+      final suffix = normalized.substring(
+        resourcesIndex + resourcesMarker.length,
+      );
       return '$rootPath/resources$suffix';
     }
 
     return '$rootPath/${normalized.split('/').last}';
+  }
+
+  Future<List<String>> _resourcePaths(
+    String resourcesPath,
+    String extension,
+  ) async {
+    final directory = Directory(resourcesPath);
+    if (!await directory.exists()) {
+      return const <String>[];
+    }
+
+    final matches = <String>[];
+    await for (final entity in directory.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is! File) {
+        continue;
+      }
+      if (entity.path.toLowerCase().endsWith(extension)) {
+        matches.add(entity.path);
+      }
+    }
+    matches.sort();
+    return matches;
   }
 }
