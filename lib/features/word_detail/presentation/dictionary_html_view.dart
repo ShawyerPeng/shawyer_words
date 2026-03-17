@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
 import 'package:shawyer_words/features/word_detail/presentation/dictionary_html_document.dart';
+import 'package:shawyer_words/features/word_detail/presentation/dictionary_html_file_store.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
@@ -24,12 +25,15 @@ class _DictionaryHtmlViewState extends State<DictionaryHtmlView> {
   static const double _minContentHeight = 120;
 
   late final WebViewController _controller;
+  late final DictionaryHtmlFileStore _fileStore;
   late String _loadedSignature;
+  int _loadRevision = 0;
   double _contentHeight = _minContentHeight;
 
   @override
   void initState() {
     super.initState();
+    _fileStore = DictionaryHtmlFileStore();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
@@ -89,13 +93,23 @@ class _DictionaryHtmlViewState extends State<DictionaryHtmlView> {
 
   Future<void> _loadCurrentDocument() async {
     final document = buildDictionaryHtmlDocument(widget.panel);
-    _loadedSignature = _signatureFor(widget.panel);
+    final signature = _signatureFor(widget.panel);
+    final revision = ++_loadRevision;
+    _loadedSignature = signature;
     if (mounted) {
       setState(() {
         _contentHeight = _minContentHeight;
       });
     }
-    await _controller.loadHtmlString(document.html, baseUrl: document.baseUrl);
+    final htmlFile = await _fileStore.writeDocument(
+      detail: widget.panel,
+      document: document,
+      signature: signature,
+    );
+    if (!mounted || revision != _loadRevision) {
+      return;
+    }
+    await _controller.loadFile(htmlFile.absolute.path);
   }
 
   String _signatureFor(DictionaryEntryDetail detail) {
