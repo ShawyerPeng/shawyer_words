@@ -51,7 +51,10 @@ void main() {
     await controller.toggleFavorite();
 
     expect(controller.state.knowledge?.isFavorite, isTrue);
-    expect((await knowledgeRepository.getByWord('abandon'))?.isFavorite, isTrue);
+    expect(
+      (await knowledgeRepository.getByWord('abandon'))?.isFavorite,
+      isTrue,
+    );
   });
 
   test('markKnown persists known and skip-confirm flags', () async {
@@ -120,11 +123,22 @@ class _FakeWordKnowledgeRepository implements WordKnowledgeRepository {
     }
   }
 
-  final Map<String, WordKnowledgeRecord> _records = <String, WordKnowledgeRecord>{};
+  final Map<String, WordKnowledgeRecord> _records =
+      <String, WordKnowledgeRecord>{};
+
+  @override
+  Future<void> clearAll() async {
+    _records.clear();
+  }
 
   @override
   Future<WordKnowledgeRecord?> getByWord(String word) async {
     return _records[WordKnowledgeRecord.normalizeWord(word)];
+  }
+
+  @override
+  Future<List<WordKnowledgeRecord>> loadAll() async {
+    return _records.values.toList(growable: false);
   }
 
   @override

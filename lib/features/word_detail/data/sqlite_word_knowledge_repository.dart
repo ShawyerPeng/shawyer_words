@@ -35,6 +35,15 @@ class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
   }
 
   @override
+  Future<List<WordKnowledgeRecord>> loadAll() async {
+    final database = await _openDatabase();
+    final rows = await database.query(_tableName, orderBy: 'updated_at DESC');
+    return rows
+        .map((row) => WordKnowledgeRecord.fromMap(row))
+        .toList(growable: false);
+  }
+
+  @override
   Future<void> save(WordKnowledgeRecord record) async {
     final database = await _openDatabase();
     await database.insert(
@@ -92,6 +101,12 @@ class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
     );
   }
 
+  @override
+  Future<void> clearAll() async {
+    final database = await _openDatabase();
+    await database.delete(_tableName);
+  }
+
   Future<void> close() async {
     await _database?.close();
     _database = null;
@@ -103,12 +118,13 @@ class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
       return existing;
     }
 
-    final database = await (_databaseFactory ?? sqflite.databaseFactory).openDatabase(
-      await _resolveDatabasePath(),
-      options: OpenDatabaseOptions(
-        version: 1,
-        onCreate: (db, _) async {
-          await db.execute('''
+    final database = await (_databaseFactory ?? sqflite.databaseFactory)
+        .openDatabase(
+          await _resolveDatabasePath(),
+          options: OpenDatabaseOptions(
+            version: 1,
+            onCreate: (db, _) async {
+              await db.execute('''
             CREATE TABLE $_tableName (
               word TEXT PRIMARY KEY,
               is_favorite INTEGER NOT NULL DEFAULT 0,
@@ -118,9 +134,9 @@ class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
               updated_at TEXT NOT NULL
             )
           ''');
-        },
-      ),
-    );
+            },
+          ),
+        );
     _database = database;
     return database;
   }

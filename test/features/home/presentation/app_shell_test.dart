@@ -12,7 +12,7 @@ import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 
 void main() {
-  testWidgets('home opens the me page and returns to the dashboard', (
+  testWidgets('shell shows reordered tabs and switches to me tab', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -27,17 +27,25 @@ void main() {
     );
 
     expect(find.text('学习广场'), findsOneWidget);
+    expect(find.text('背单词'), findsOneWidget);
+    expect(find.text('知识库'), findsOneWidget);
+    expect(find.text('学习'), findsOneWidget);
+    expect(find.text('我的'), findsWidgets);
 
-    await tester.tap(find.byKey(const ValueKey('open-me-page')));
+    await tester.tap(find.text('我的').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('我的'), findsOneWidget);
+    expect(find.text('我的'), findsWidgets);
     expect(find.text('登录'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('close-me-page')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('学习广场'), findsOneWidget);
+    final bottomNavPositioned = find.byWidgetPredicate(
+      (widget) =>
+          widget is Positioned &&
+          widget.left == 0 &&
+          widget.right == 0 &&
+          widget.bottom == 12,
+    );
+    expect(bottomNavPositioned, findsOneWidget);
   });
 }
 

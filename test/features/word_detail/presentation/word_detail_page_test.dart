@@ -418,8 +418,18 @@ class _FakeWordKnowledgeRepository implements WordKnowledgeRepository {
       <String, WordKnowledgeRecord>{};
 
   @override
+  Future<void> clearAll() async {
+    _records.clear();
+  }
+
+  @override
   Future<WordKnowledgeRecord?> getByWord(String word) async {
     return _records[WordKnowledgeRecord.normalizeWord(word)];
+  }
+
+  @override
+  Future<List<WordKnowledgeRecord>> loadAll() async {
+    return _records.values.toList(growable: false);
   }
 
   @override

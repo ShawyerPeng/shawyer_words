@@ -1,40 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:shawyer_words/features/settings/application/settings_controller.dart';
+import 'package:shawyer_words/features/settings/presentation/general_settings_page.dart';
+import 'package:shawyer_words/features/settings/presentation/help_feedback_page.dart';
+import 'package:shawyer_words/features/settings/presentation/learning_settings_page.dart';
+import 'package:shawyer_words/features/settings/presentation/membership_center_page.dart';
+import 'package:shawyer_words/features/settings/presentation/study_statistics_page.dart';
 
 class MePage extends StatelessWidget {
   const MePage({
     super.key,
+    required this.settingsController,
     this.dictionaryLibraryManagementPageBuilder,
+    this.showCloseButton = true,
   });
 
+  final SettingsController settingsController;
   final WidgetBuilder? dictionaryLibraryManagementPageBuilder;
+  final bool showCloseButton;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    final bottomInset = showCloseButton
+        ? 24.0
+        : mediaQuery.padding.bottom + 132;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F5FA),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+          padding: EdgeInsets.fromLTRB(24, 18, 24, bottomInset),
           children: [
             Row(
               children: [
-                Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  child: InkWell(
-                    key: const ValueKey('close-me-page'),
-                    onTap: () => Navigator.of(context).pop(),
+                if (showCloseButton) ...[
+                  Material(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
-                    child: const SizedBox(
-                      height: 56,
-                      width: 56,
-                      child: Icon(Icons.arrow_back_ios_new_rounded),
+                    child: InkWell(
+                      key: const ValueKey('close-me-page'),
+                      onTap: () => Navigator.of(context).pop(),
+                      borderRadius: BorderRadius.circular(24),
+                      child: const SizedBox(
+                        height: 56,
+                        width: 56,
+                        child: Icon(Icons.arrow_back_ios_new_rounded),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
+                  const SizedBox(width: 16),
+                ],
                 Text(
                   '我的',
                   style: theme.textTheme.headlineSmall?.copyWith(
@@ -98,15 +114,6 @@ class MePage extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 22),
-            Text(
-              '通用设置',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: const Color(0xFF7B8497),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 14),
             _MenuTile(
               icon: Icons.menu_book_outlined,
               title: '词典库管理',
@@ -120,22 +127,62 @@ class MePage extends StatelessWidget {
                     ),
             ),
             const SizedBox(height: 14),
-            const _MenuTile(
+            _MenuTile(
               icon: Icons.settings_outlined,
-              title: '通知与外观',
-              subtitle: '通知、外观、学习提醒',
+              title: '通用设置',
+              subtitle: '我的语言、外观、主题和字体大小',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      GeneralSettingsPage(controller: settingsController),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
-            const _MenuTile(
+            _MenuTile(
+              icon: Icons.school_outlined,
+              title: '学习设置',
+              subtitle: '单词书、提醒、发音和翻译显示',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      LearningSettingsPage(controller: settingsController),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _MenuTile(
+              icon: Icons.query_stats_rounded,
+              title: '数据统计',
+              subtitle: '热力图、词汇量增长和每日学习趋势',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      StudyStatisticsPage(controller: settingsController),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _MenuTile(
               icon: Icons.workspace_premium_outlined,
               title: '会员中心',
               subtitle: '订阅、权益、兑换码',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const MembershipCenterPage(),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
-            const _MenuTile(
+            _MenuTile(
               icon: Icons.help_outline_rounded,
               title: '帮助与反馈',
               subtitle: '常见问题、意见反馈',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const HelpFeedbackPage(),
+                ),
+              ),
             ),
           ],
         ),
@@ -205,10 +252,7 @@ class _MenuTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF949CAD),
-              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF949CAD)),
             ],
           ),
         ),

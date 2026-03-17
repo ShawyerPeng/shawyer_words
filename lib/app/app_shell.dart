@@ -6,13 +6,14 @@ import 'package:shawyer_words/features/home/presentation/home_dashboard_page.dar
 import 'package:shawyer_words/features/me/presentation/me_page.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
 import 'package:shawyer_words/features/search/presentation/search_page.dart';
+import 'package:shawyer_words/features/settings/application/settings_controller.dart';
 import 'package:shawyer_words/features/shared/presentation/placeholder_section_page.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/presentation/study_home_page.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
-enum _ShellTab { phraseBook, home, vocabulary }
+enum _ShellTab { vocabulary, knowledgeBase, learning, me }
 
 class AppShell extends StatefulWidget {
   const AppShell({
@@ -21,6 +22,7 @@ class AppShell extends StatefulWidget {
     required this.dictionaryLibraryController,
     required this.pickDictionaryFile,
     required this.searchController,
+    required this.settingsController,
     required this.studyPlanController,
     required this.studyRepository,
     required this.wordDetailPageBuilder,
@@ -30,6 +32,7 @@ class AppShell extends StatefulWidget {
   final DictionaryLibraryController dictionaryLibraryController;
   final Future<String?> Function() pickDictionaryFile;
   final SearchController searchController;
+  final SettingsController settingsController;
   final StudyPlanController studyPlanController;
   final StudyRepository studyRepository;
   final WordDetailPageBuilder wordDetailPageBuilder;
@@ -39,21 +42,12 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  _ShellTab _selectedTab = _ShellTab.home;
+  _ShellTab _selectedTab = _ShellTab.knowledgeBase;
 
-  Future<void> _openMePage() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MePage(
-          dictionaryLibraryManagementPageBuilder: (_) =>
-              DictionaryLibraryManagementPage(
-                controller: widget.dictionaryLibraryController,
-                dictionaryController: widget.dictionaryController,
-                pickDictionaryFile: widget.pickDictionaryFile,
-              ),
-        ),
-      ),
-    );
+  void _openMePage() {
+    setState(() {
+      _selectedTab = _ShellTab.me;
+    });
   }
 
   Future<void> _openSearchPage() async {
@@ -71,16 +65,26 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      const PlaceholderSectionPage(
-        title: '句库',
-        description: '这里会放你的表达收藏、句型资料和高频场景内容。',
-        icon: Icons.format_quote_rounded,
-      ),
-      HomeDashboardPage(onOpenMe: _openMePage, onOpenSearch: _openSearchPage),
       StudyHomePage(
         controller: widget.studyPlanController,
         studyRepository: widget.studyRepository,
         wordDetailPageBuilder: widget.wordDetailPageBuilder,
+      ),
+      HomeDashboardPage(onOpenMe: _openMePage, onOpenSearch: _openSearchPage),
+      const PlaceholderSectionPage(
+        title: '学习',
+        description: '这里会放你的课程、训练营、学习记录和学习路径内容。',
+        icon: Icons.auto_stories_rounded,
+      ),
+      MePage(
+        settingsController: widget.settingsController,
+        showCloseButton: false,
+        dictionaryLibraryManagementPageBuilder: (_) =>
+            DictionaryLibraryManagementPage(
+              controller: widget.dictionaryLibraryController,
+              dictionaryController: widget.dictionaryController,
+              pickDictionaryFile: widget.pickDictionaryFile,
+            ),
       ),
     ];
 
@@ -94,7 +98,7 @@ class _AppShellState extends State<AppShell> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 22,
+            bottom: 12,
             child: SafeArea(
               top: false,
               child: Center(
@@ -116,32 +120,40 @@ class _AppShellState extends State<AppShell> {
                     children: [
                       Expanded(
                         child: _BottomTabButton(
-                          icon: Icons.format_quote_rounded,
-                          label: '句库',
-                          active: _selectedTab == _ShellTab.phraseBook,
-                          onTap: () => setState(
-                            () => _selectedTab = _ShellTab.phraseBook,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: _BottomTabButton(
-                          icon: Icons.add_rounded,
-                          label: '新学习',
-                          active: _selectedTab == _ShellTab.home,
-                          emphasized: true,
-                          onTap: () =>
-                              setState(() => _selectedTab = _ShellTab.home),
-                        ),
-                      ),
-                      Expanded(
-                        child: _BottomTabButton(
                           icon: Icons.menu_book_outlined,
                           label: '背单词',
                           active: _selectedTab == _ShellTab.vocabulary,
                           onTap: () => setState(
                             () => _selectedTab = _ShellTab.vocabulary,
                           ),
+                        ),
+                      ),
+                      Expanded(
+                        child: _BottomTabButton(
+                          icon: Icons.collections_bookmark_outlined,
+                          label: '知识库',
+                          active: _selectedTab == _ShellTab.knowledgeBase,
+                          onTap: () => setState(
+                            () => _selectedTab = _ShellTab.knowledgeBase,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: _BottomTabButton(
+                          icon: Icons.auto_stories_outlined,
+                          label: '学习',
+                          active: _selectedTab == _ShellTab.learning,
+                          onTap: () =>
+                              setState(() => _selectedTab = _ShellTab.learning),
+                        ),
+                      ),
+                      Expanded(
+                        child: _BottomTabButton(
+                          icon: Icons.person_outline_rounded,
+                          label: '我的',
+                          active: _selectedTab == _ShellTab.me,
+                          onTap: () =>
+                              setState(() => _selectedTab = _ShellTab.me),
                         ),
                       ),
                     ],
@@ -162,23 +174,17 @@ class _BottomTabButton extends StatelessWidget {
     required this.label,
     required this.active,
     required this.onTap,
-    this.emphasized = false,
   });
 
   final IconData icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
-  final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = emphasized
-        ? const Color(0xFFE2F8F0)
-        : const Color(0xFFF1F4F9);
-
     return Material(
-      color: active ? activeColor : Colors.transparent,
+      color: active ? const Color(0xFFF1F4F9) : Colors.transparent,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,

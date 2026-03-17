@@ -80,5 +80,42 @@ void main() {
       await repository.saveNote('abandon', '   ');
       expect((await repository.getByWord('abandon'))?.note, isEmpty);
     });
+
+    test(
+      'loadAll returns all saved records and clearAll removes them',
+      () async {
+        await repository.save(
+          WordKnowledgeRecord(
+            word: 'abandon',
+            isFavorite: true,
+            isKnown: true,
+            note: 'first',
+            skipKnownConfirm: false,
+            updatedAt: DateTime.parse('2026-03-18T10:00:00.000Z'),
+          ),
+        );
+        await repository.save(
+          WordKnowledgeRecord(
+            word: 'ability',
+            isFavorite: false,
+            isKnown: false,
+            note: 'second',
+            skipKnownConfirm: true,
+            updatedAt: DateTime.parse('2026-03-18T11:00:00.000Z'),
+          ),
+        );
+
+        final records = await repository.loadAll();
+
+        expect(
+          records.map((record) => record.word),
+          containsAll(<String>['abandon', 'ability']),
+        );
+
+        await repository.clearAll();
+
+        expect(await repository.loadAll(), isEmpty);
+      },
+    );
   });
 }

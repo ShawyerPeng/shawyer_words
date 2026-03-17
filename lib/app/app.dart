@@ -20,6 +20,10 @@ import 'package:shawyer_words/features/search/application/search_controller.dart
 import 'package:shawyer_words/features/search/data/installed_dictionary_word_lookup_repository.dart';
 import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
 import 'package:shawyer_words/features/search/data/sample_word_lookup_repository.dart';
+import 'package:shawyer_words/features/settings/application/settings_controller.dart';
+import 'package:shawyer_words/features/settings/data/file_system_app_settings_repository.dart';
+import 'package:shawyer_words/features/settings/data/platform_system_settings_opener.dart';
+import 'package:shawyer_words/features/settings/domain/app_settings.dart';
 import 'package:shawyer_words/features/study/data/in_memory_study_repository.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
@@ -40,6 +44,7 @@ class ShawyerWordsApp extends StatelessWidget {
     DictionaryLibraryController? dictionaryLibraryController,
     DictionaryFilePicker? pickDictionaryFile,
     SearchController? searchController,
+    SettingsController? settingsController,
     StudyRepository? studyRepository,
     StudyPlanController? studyPlanController,
     WordDetailPageBuilder? wordDetailPageBuilder,
@@ -100,6 +105,18 @@ class ShawyerWordsApp extends StatelessWidget {
 
     final resolvedPickDictionaryFile =
         pickDictionaryFile ?? PlatformDictionaryFilePicker().pickDictionaryFile;
+    final resolvedSettingsController =
+        settingsController ??
+        SettingsController(
+          repository: FileSystemAppSettingsRepository(
+            rootPathResolver: _settingsRootPath,
+          ),
+          wordKnowledgeRepository: wordKnowledgeRepository,
+          systemSettingsOpener: const PlatformSystemSettingsOpener(),
+        );
+    if (resolvedSettingsController.state.status == SettingsStatus.idle) {
+      resolvedSettingsController.load();
+    }
 
     return ShawyerWordsApp._(
       key: key,
@@ -116,6 +133,7 @@ class ShawyerWordsApp extends StatelessWidget {
             ),
             historyRepository: InMemorySearchHistoryRepository(),
           ),
+      settingsController: resolvedSettingsController,
       studyRepository: resolvedStudyRepository,
       studyPlanController:
           studyPlanController ??
@@ -130,6 +148,7 @@ class ShawyerWordsApp extends StatelessWidget {
     required this.dictionaryLibraryController,
     required this.pickDictionaryFile,
     required this.searchController,
+    required this.settingsController,
     required this.studyRepository,
     required this.studyPlanController,
     required this.wordDetailPageBuilder,
@@ -139,41 +158,109 @@ class ShawyerWordsApp extends StatelessWidget {
   final DictionaryLibraryController dictionaryLibraryController;
   final DictionaryFilePicker pickDictionaryFile;
   final SearchController searchController;
+  final SettingsController settingsController;
   final StudyRepository studyRepository;
   final StudyPlanController studyPlanController;
   final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0BB58A),
-        brightness: Brightness.light,
-      ),
-      fontFamily: 'Avenir Next',
-      scaffoldBackgroundColor: const Color(0xFFF3F5FA),
-      textTheme: ThemeData.light().textTheme.apply(
-        bodyColor: const Color(0xFF1B2030),
-        displayColor: const Color(0xFF1B2030),
-      ),
-      useMaterial3: true,
-    );
-
-    return MaterialApp(
-      title: 'Shawyer Words',
-      debugShowCheckedModeBanner: false,
-      theme: theme,
-      home: AppShell(
-        dictionaryController: dictionaryController,
-        dictionaryLibraryController: dictionaryLibraryController,
-        pickDictionaryFile: pickDictionaryFile,
-        searchController: searchController,
-        studyPlanController: studyPlanController,
-        studyRepository: studyRepository,
-        wordDetailPageBuilder: wordDetailPageBuilder,
-      ),
+    return AnimatedBuilder(
+      animation: settingsController,
+      builder: (context, _) {
+        final settings = settingsController.state.settings;
+        return MaterialApp(
+          title: 'Shawyer Words',
+          debugShowCheckedModeBanner: false,
+          themeMode: _themeModeFor(settings.appearanceMode),
+          theme: _buildTheme(settings, brightness: Brightness.light),
+          darkTheme: _buildTheme(settings, brightness: Brightness.dark),
+          home: AppShell(
+            dictionaryController: dictionaryController,
+            dictionaryLibraryController: dictionaryLibraryController,
+            pickDictionaryFile: pickDictionaryFile,
+            searchController: searchController,
+            settingsController: settingsController,
+            studyPlanController: studyPlanController,
+            studyRepository: studyRepository,
+            wordDetailPageBuilder: wordDetailPageBuilder,
+          ),
+        );
+      },
     );
   }
+}
+
+ThemeData _buildTheme(AppSettings settings, {required Brightness brightness}) {
+  final seedColor = switch (settings.themeName) {
+    'forest' => const Color(0xFF0A9B6B),
+    'sunrise' => const Color(0xFFF28C3A),
+    _ => const Color(0xFF0BB58A),
+  };
+  final fontScale = switch (settings.fontScale) {
+    AppFontScale.normal => 1.0,
+    AppFontScale.medium => 1.08,
+    AppFontScale.large => 1.16,
+  };
+
+  return ThemeData(
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: seedColor,
+      brightness: brightness,
+    ),
+    fontFamily: 'Avenir Next',
+    scaffoldBackgroundColor: brightness == Brightness.dark
+        ? const Color(0xFF0F1117)
+        : const Color(0xFFF3F5FA),
+    textTheme: _scaledTextTheme(
+      ThemeData(brightness: brightness).textTheme,
+      factor: fontScale,
+      color: brightness == Brightness.dark
+          ? const Color(0xFFF5F7FA)
+          : const Color(0xFF1B2030),
+    ),
+    useMaterial3: true,
+  );
+}
+
+ThemeMode _themeModeFor(AppAppearanceMode mode) {
+  return switch (mode) {
+    AppAppearanceMode.system => ThemeMode.system,
+    AppAppearanceMode.light => ThemeMode.light,
+    AppAppearanceMode.dark => ThemeMode.dark,
+  };
+}
+
+TextTheme _scaledTextTheme(
+  TextTheme textTheme, {
+  required double factor,
+  required Color color,
+}) {
+  TextStyle scale(TextStyle? style, double fallbackSize) {
+    final resolvedStyle = style ?? TextStyle(fontSize: fallbackSize);
+    return resolvedStyle.copyWith(
+      color: color,
+      fontSize: (resolvedStyle.fontSize ?? fallbackSize) * factor,
+    );
+  }
+
+  return TextTheme(
+    displayLarge: scale(textTheme.displayLarge, 57),
+    displayMedium: scale(textTheme.displayMedium, 45),
+    displaySmall: scale(textTheme.displaySmall, 36),
+    headlineLarge: scale(textTheme.headlineLarge, 32),
+    headlineMedium: scale(textTheme.headlineMedium, 28),
+    headlineSmall: scale(textTheme.headlineSmall, 24),
+    titleLarge: scale(textTheme.titleLarge, 22),
+    titleMedium: scale(textTheme.titleMedium, 16),
+    titleSmall: scale(textTheme.titleSmall, 14),
+    bodyLarge: scale(textTheme.bodyLarge, 16),
+    bodyMedium: scale(textTheme.bodyMedium, 14),
+    bodySmall: scale(textTheme.bodySmall, 12),
+    labelLarge: scale(textTheme.labelLarge, 14),
+    labelMedium: scale(textTheme.labelMedium, 12),
+    labelSmall: scale(textTheme.labelSmall, 11),
+  );
 }
 
 DictionaryLibraryRepository _buildDictionaryLibraryRepository({
@@ -260,4 +347,9 @@ Future<String> _dictionaryRootPath() async {
 Future<String> _wordKnowledgeDatabasePath() async {
   final supportDirectory = await getApplicationSupportDirectory();
   return '${supportDirectory.path}/word_knowledge.db';
+}
+
+Future<String> _settingsRootPath() async {
+  final supportDirectory = await getApplicationSupportDirectory();
+  return '${supportDirectory.path}/settings';
 }

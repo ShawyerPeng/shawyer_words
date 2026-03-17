@@ -156,7 +156,14 @@ class _FakeWordDetailRepository implements WordDetailRepository {
 
 class _FakeWordKnowledgeRepository implements WordKnowledgeRepository {
   @override
+  Future<void> clearAll() async {}
+
+  @override
   Future<WordKnowledgeRecord?> getByWord(String word) async => null;
+
+  @override
+  Future<List<WordKnowledgeRecord>> loadAll() async =>
+      const <WordKnowledgeRecord>[];
 
   @override
   Future<void> markKnown(
@@ -233,7 +240,9 @@ class _FakeWordLookupRepository implements WordLookupRepository {
       ),
     ];
     return entries
-        .where((entry) => entry.word.toLowerCase().startsWith(query.toLowerCase()))
+        .where(
+          (entry) => entry.word.toLowerCase().startsWith(query.toLowerCase()),
+        )
         .take(limit)
         .toList();
   }

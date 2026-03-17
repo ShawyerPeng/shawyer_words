@@ -7,6 +7,6 @@ void main() {
 
     expect(find.text('学习广场'), findsOneWidget);
     expect(find.text('查单词或搜索文章'), findsOneWidget);
-    expect(find.text('新学习'), findsOneWidget);
+    expect(find.text('知识库'), findsOneWidget);
   });
 }
