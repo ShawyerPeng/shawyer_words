@@ -199,6 +199,88 @@ void main() {
         ]);
       },
     );
+
+    test('reuses mdx reader instance across repeated lookups', () async {
+      final package = await _writePackage(
+        tempRoot.path,
+        id: 'reuse',
+        name: 'Reuse',
+      );
+      var openCalls = 0;
+      var closeCalls = 0;
+      var createdReaders = 0;
+      final repository = DictionaryEntryLookupRepository(
+        libraryRepository: _FakeDictionaryLibraryRepository(
+          items: <DictionaryLibraryItem>[
+            _libraryItem(package, isVisible: true, sortIndex: 0),
+          ],
+        ),
+        catalog: _FakeDictionaryCatalog(<DictionaryPackage>[package]),
+        readerFactory: (path) {
+          createdReaders += 1;
+          return _LookupReader(
+            path: path,
+            onOpen: () => openCalls += 1,
+            onClose: () => closeCalls += 1,
+            onLookup: (_) => '<div class="definition">cached</div>',
+          );
+        },
+      );
+
+      await repository.lookupAcrossVisibleDictionaries('abandon');
+      await repository.lookupAcrossVisibleDictionaries('absorb');
+
+      expect(createdReaders, 1);
+      expect(openCalls, 1);
+      expect(closeCalls, 0);
+
+      await repository.dispose();
+      expect(closeCalls, 1);
+    });
+
+    test(
+      'caches css/js resource scan results across repeated lookups',
+      () async {
+        final package = await _writePackage(
+          tempRoot.path,
+          id: 'cached-res',
+          name: 'Cached Res',
+        );
+        final cssPath = '${package.resourcesPath}/theme.css';
+        final jsPath = '${package.resourcesPath}/switch.js';
+        await File(cssPath).writeAsString('body {}');
+        await File(jsPath).writeAsString('console.log(1);');
+        final repository = DictionaryEntryLookupRepository(
+          libraryRepository: _FakeDictionaryLibraryRepository(
+            items: <DictionaryLibraryItem>[
+              _libraryItem(package, isVisible: true, sortIndex: 0),
+            ],
+          ),
+          catalog: _FakeDictionaryCatalog(<DictionaryPackage>[package]),
+          readerFactory: (path) => _LookupReader(
+            path: path,
+            onLookup: (_) => '<div class="definition">cached-res</div>',
+          ),
+        );
+
+        final first = await repository.lookupAcrossVisibleDictionaries(
+          'abandon',
+        );
+        expect(first.single.stylesheetPaths, <String>[cssPath]);
+        expect(first.single.scriptPaths, <String>[jsPath]);
+
+        await File(cssPath).delete();
+        await File(jsPath).delete();
+
+        final second = await repository.lookupAcrossVisibleDictionaries(
+          'abandon',
+        );
+        expect(second.single.stylesheetPaths, <String>[cssPath]);
+        expect(second.single.scriptPaths, <String>[jsPath]);
+
+        await repository.dispose();
+      },
+    );
   });
 
   group('PlatformWordDetailRepository', () {
@@ -278,14 +360,24 @@ void main() {
               ],
             ),
           ]),
-          lexDbRepository: _FakeLexDbWordDetailRepository(<LexDbEntryDetail>[
-            const LexDbEntryDetail(
-              dictionaryId: 'lexdb',
-              dictionaryName: 'LexDB',
-              headword: 'abandon',
-              headwordDisplay: 'a·ban·don',
-            ),
-          ]),
+          lexDbRepository: _FakeLexDbWordDetailRepository(
+            <LexDbEntryDetail>[
+              const LexDbEntryDetail(
+                dictionaryId: 'lexdb',
+                dictionaryName: 'LexDB',
+                headword: 'abandon',
+                headwordDisplay: 'a·ban·don',
+                entryAttributes: <String, String>{
+                  'ldoce/word_family':
+                      '[{"header":"Word family","groups":[{"pos":"noun","words":["abandonment"]},{"pos":"adj","words":["abandoned"]}]}]',
+                },
+              ),
+            ],
+            briefDefinitions: const <String, String>{
+              'abandonment': '放弃',
+              'abandoned': '被抛弃的',
+            },
+          ),
         );
 
         final detail = await repository.load('abandon');
@@ -312,8 +404,16 @@ void main() {
             dictionaryName: 'LexDB',
             headword: 'abandon',
             headwordDisplay: 'a·ban·don',
+            entryAttributes: <String, String>{
+              'ldoce/word_family':
+                  '[{"header":"Word family","groups":[{"pos":"noun","words":["abandonment"]},{"pos":"adj","words":["abandoned"]}]}]',
+            },
           ),
         ]);
+        expect(detail.wordFamilyBriefDefinitions, const <String, String>{
+          'abandonment': '放弃',
+          'abandoned': '被抛弃的',
+        });
       },
     );
 
@@ -338,6 +438,36 @@ void main() {
         expect(detail.lexDbEntries, isEmpty);
       },
     );
+
+    test('loads dictionary panels and lexdb concurrently', () async {
+      final repository = PlatformWordDetailRepository(
+        lookupRepository:
+            _DelayedLookupRepository(const <DictionaryEntryDetail>[
+              DictionaryEntryDetail(
+                dictionaryId: 'primary',
+                dictionaryName: 'Primary',
+                word: 'abandon',
+                rawContent: '<p>primary</p>',
+              ),
+            ], delay: const Duration(milliseconds: 250)),
+        lexDbRepository:
+            _DelayedLexDbWordDetailRepository(const <LexDbEntryDetail>[
+              LexDbEntryDetail(
+                dictionaryId: 'lexdb',
+                dictionaryName: 'LexDB',
+                headword: 'abandon',
+              ),
+            ], delay: const Duration(milliseconds: 250)),
+      );
+
+      final stopwatch = Stopwatch()..start();
+      final detail = await repository.load('abandon');
+      stopwatch.stop();
+
+      expect(detail.dictionaryPanels, hasLength(1));
+      expect(detail.lexDbEntries, hasLength(1));
+      expect(stopwatch.elapsedMilliseconds, lessThan(430));
+    });
   });
 }
 
@@ -445,19 +575,29 @@ class _LookupReader implements MdictReadable {
   _LookupReader({
     required this.path,
     required String? Function(String word) onLookup,
-  }) : _onLookup = onLookup;
+    void Function()? onOpen,
+    void Function()? onClose,
+  }) : _onLookup = onLookup,
+       _onOpen = onOpen,
+       _onClose = onClose;
 
   final String path;
   final String? Function(String word) _onLookup;
+  final void Function()? _onOpen;
+  final void Function()? _onClose;
 
   @override
-  Future<void> close() async {}
+  Future<void> close() async {
+    _onClose?.call();
+  }
 
   @override
   Future<List<String>> listKeys({int limit = 50}) async => <String>[];
 
   @override
-  Future<void> open() async {}
+  Future<void> open() async {
+    _onOpen?.call();
+  }
 
   @override
   Future<String?> lookup(String word) async => _onLookup(word);
@@ -480,19 +620,57 @@ class _FakeLookupRepository extends DictionaryEntryLookupRepository {
   }
 }
 
+class _DelayedLookupRepository extends _FakeLookupRepository {
+  _DelayedLookupRepository(this._details, {required this.delay})
+    : super(_details);
+
+  final List<DictionaryEntryDetail> _details;
+  final Duration delay;
+
+  @override
+  Future<List<DictionaryEntryDetail>> lookupAcrossVisibleDictionaries(
+    String word,
+  ) async {
+    await Future<void>.delayed(delay);
+    return _details;
+  }
+}
+
 class _FakeLexDbWordDetailRepository extends LexDbWordDetailRepository {
-  _FakeLexDbWordDetailRepository(this.details)
-    : super(
-        databasePath: ':memory:',
-        dictionaryId: 'lexdb',
-        dictionaryName: 'LexDB',
-        databaseFactory: databaseFactoryFfiNoIsolate,
-      );
+  _FakeLexDbWordDetailRepository(
+    this.details, {
+    this.briefDefinitions = const <String, String>{},
+  }) : super(
+         databasePath: ':memory:',
+         dictionaryId: 'lexdb',
+         dictionaryName: 'LexDB',
+         databaseFactory: databaseFactoryFfiNoIsolate,
+       );
 
   final List<LexDbEntryDetail> details;
+  final Map<String, String> briefDefinitions;
 
   @override
   Future<List<LexDbEntryDetail>> lookup(String word) async => details;
+
+  @override
+  Future<Map<String, String>> lookupBriefDefinitions(
+    Iterable<String> words,
+  ) async {
+    if (briefDefinitions.isEmpty) {
+      return const <String, String>{};
+    }
+    final result = <String, String>{};
+    for (final word in words) {
+      final key = word.trim().toLowerCase();
+      final value = briefDefinitions[key];
+      if (value == null || value.trim().isEmpty) {
+        continue;
+      }
+      result[key] = value.trim();
+    }
+    return result;
+  }
 }
 
 class _ThrowingLexDbWordDetailRepository extends LexDbWordDetailRepository {
@@ -507,5 +685,24 @@ class _ThrowingLexDbWordDetailRepository extends LexDbWordDetailRepository {
   @override
   Future<List<LexDbEntryDetail>> lookup(String word) async {
     throw StateError('lexdb failed');
+  }
+}
+
+class _DelayedLexDbWordDetailRepository extends LexDbWordDetailRepository {
+  _DelayedLexDbWordDetailRepository(this.details, {required this.delay})
+    : super(
+        databasePath: ':memory:',
+        dictionaryId: 'lexdb',
+        dictionaryName: 'LexDB',
+        databaseFactory: databaseFactoryFfiNoIsolate,
+      );
+
+  final List<LexDbEntryDetail> details;
+  final Duration delay;
+
+  @override
+  Future<List<LexDbEntryDetail>> lookup(String word) async {
+    await Future<void>.delayed(delay);
+    return details;
   }
 }

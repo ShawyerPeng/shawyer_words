@@ -51,6 +51,22 @@ void main() {
         LexDbLabel(type: 'pos', value: 'verb'),
         LexDbLabel(type: 'frequency', value: 'S1'),
       ]);
+      expect(
+        entry.entryAttributes['ldoce/thesaurus'],
+        contains('"word":"leave"'),
+      );
+      expect(entry.relations, const <LexDbRelation>[
+        LexDbRelation(
+          relationType: 'synonym',
+          clickable: 'quit',
+          targetWord: 'quit',
+        ),
+        LexDbRelation(
+          relationType: 'synonym',
+          clickable: 'desert',
+          targetWord: 'desert',
+        ),
+      ]);
       expect(entry.pronunciations, const <LexDbPronunciation>[
         LexDbPronunciation(
           variant: 'uk',
@@ -106,6 +122,24 @@ void main() {
         ),
       ]);
     });
+
+    test('provides reusable batch brief definitions lookup', () async {
+      final repository = LexDbWordDetailRepository(
+        databasePath: databasePath,
+        dictionaryId: 'ldoce',
+        dictionaryName: 'Longman',
+        databaseFactory: databaseFactory,
+      );
+
+      final definitions = await repository.lookupBriefDefinitions(
+        const <String>['Abandon', 'abandonment', 'englishOnly', 'missing'],
+      );
+
+      expect(definitions['abandon'], '放弃');
+      expect(definitions['abandonment'], '放弃');
+      expect(definitions['englishonly'], 'to stop supporting someone');
+      expect(definitions.containsKey('missing'), isFalse);
+    });
   });
 }
 
@@ -136,6 +170,28 @@ Future<void> _createSchema(Database database) async {
       sense_id INTEGER,
       label_type TEXT NOT NULL,
       label_value TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0
+    )
+  ''');
+  await database.execute('''
+    CREATE TABLE entry_attributes (
+      id INTEGER PRIMARY KEY,
+      entry_id INTEGER NOT NULL,
+      attr_key TEXT NOT NULL,
+      attr_value BLOB
+    )
+  ''');
+  await database.execute('''
+    CREATE TABLE relations (
+      id INTEGER PRIMARY KEY,
+      entry_id INTEGER NOT NULL,
+      sense_id INTEGER,
+      relation_type TEXT NOT NULL,
+      prefix TEXT,
+      clickable TEXT NOT NULL,
+      suffix TEXT,
+      target_word TEXT NOT NULL,
+      target_sense TEXT,
       sort_order INTEGER DEFAULT 0
     )
   ''');
@@ -240,6 +296,36 @@ Future<void> _seedLexDb(Database database) async {
     'label_value': 'S1',
     'sort_order': 1,
   });
+  await database.insert('entry_attributes', <String, Object?>{
+    'id': 1,
+    'entry_id': 1,
+    'attr_key': 'ldoce/thesaurus',
+    'attr_value':
+        '[{"header":"THESAURUS","section":"","items":[{"word":"leave","definition":"to go away"}]}]',
+  });
+  await database.insert('entry_attributes', <String, Object?>{
+    'id': 2,
+    'entry_id': 1,
+    'attr_key': 'tld/sense_ratio_cn',
+    'attr_value':
+        '[{"meaning":"放弃","percent":76},{"meaning":"离弃","percent":24}]',
+  });
+  await database.insert('relations', <String, Object?>{
+    'id': 1,
+    'entry_id': 1,
+    'relation_type': 'synonym',
+    'clickable': 'quit',
+    'target_word': 'quit',
+    'sort_order': 0,
+  });
+  await database.insert('relations', <String, Object?>{
+    'id': 2,
+    'entry_id': 1,
+    'relation_type': 'synonym',
+    'clickable': 'desert',
+    'target_word': 'desert',
+    'sort_order': 1,
+  });
   await database.insert('senses', <String, Object?>{
     'id': 10,
     'entry_id': 1,
@@ -247,6 +333,37 @@ Future<void> _seedLexDb(Database database) async {
     'signpost': 'LEAVE',
     'definition': 'to leave a place, thing, or person',
     'definition_zh': '离弃；抛弃',
+    'sort_order': 0,
+  });
+  await database.insert('entries', <String, Object?>{
+    'id': 2,
+    'dict_id': 'ldoce',
+    'headword': 'abandonment',
+    'headword_lower': 'abandonment',
+    'headword_display': 'a·ban·don·ment',
+  });
+  await database.insert('senses', <String, Object?>{
+    'id': 20,
+    'entry_id': 2,
+    'sense_number': '1',
+    'signpost': 'STATE',
+    'definition': 'the act of leaving behind completely',
+    'definition_zh': '放弃，离弃（名词）',
+    'sort_order': 0,
+  });
+  await database.insert('entries', <String, Object?>{
+    'id': 3,
+    'dict_id': 'ldoce',
+    'headword': 'englishOnly',
+    'headword_lower': 'englishonly',
+    'headword_display': 'eng·lish·only',
+  });
+  await database.insert('senses', <String, Object?>{
+    'id': 30,
+    'entry_id': 3,
+    'sense_number': '1',
+    'definition': 'to stop supporting someone; to leave',
+    'definition_zh': null,
     'sort_order': 0,
   });
   await database.insert('labels', <String, Object?>{

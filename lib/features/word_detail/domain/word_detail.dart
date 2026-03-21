@@ -9,6 +9,9 @@ class WordDetail {
     this.examples = const <WordExample>[],
     this.lexDbEntries = const <LexDbEntryDetail>[],
     this.dictionaryPanels = const <DictionaryEntryDetail>[],
+    this.similarSpellingWords = const <String>[],
+    this.similarSoundWords = const <String>[],
+    this.wordFamilyBriefDefinitions = const <String, String>{},
   });
 
   final String word;
@@ -17,4 +20,7 @@ class WordDetail {
   final List<WordExample> examples;
   final List<LexDbEntryDetail> lexDbEntries;
   final List<DictionaryEntryDetail> dictionaryPanels;
+  final List<String> similarSpellingWords;
+  final List<String> similarSoundWords;
+  final Map<String, String> wordFamilyBriefDefinitions;
 }
