@@ -164,7 +164,8 @@ class MdxDictionaryParser {
       pronunciation: _firstMatch(rawContent, const [
         r'<div[^>]*class="[^"]*phonetic[^"]*"[^>]*>(.*?)</div>',
         r'<span[^>]*class="[^"]*phonetic[^"]*"[^>]*>(.*?)</span>',
-        r'/[^/\n]+/',
+        r'<a[^>]*class="[^"]*phonetic[^"]*"[^>]*>(.*?)</a>',
+        r'/(?=[^/\n<>"=.]*[ˈˌəæɑɔɜɪʊʌθðŋɒʃʒɚɝɨʔː])[^/\n<>"=.]+/',
       ]),
       partOfSpeech: _firstMatch(rawContent, const [
         r'<span[^>]*class="[^"]*pos[^"]*"[^>]*>(.*?)</span>',

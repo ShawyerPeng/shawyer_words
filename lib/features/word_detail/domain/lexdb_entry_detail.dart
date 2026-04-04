@@ -6,6 +6,8 @@ class LexDbEntryDetail {
     this.headwordDisplay,
     this.pronunciations = const <LexDbPronunciation>[],
     this.entryLabels = const <LexDbLabel>[],
+    this.entryAttributes = const <String, String>{},
+    this.relations = const <LexDbRelation>[],
     this.senses = const <LexDbSense>[],
     this.collocations = const <LexDbCollocation>[],
   });
@@ -16,6 +18,8 @@ class LexDbEntryDetail {
   final String? headwordDisplay;
   final List<LexDbPronunciation> pronunciations;
   final List<LexDbLabel> entryLabels;
+  final Map<String, String> entryAttributes;
+  final List<LexDbRelation> relations;
   final List<LexDbSense> senses;
   final List<LexDbCollocation> collocations;
 
@@ -28,6 +32,8 @@ class LexDbEntryDetail {
         other.headwordDisplay == headwordDisplay &&
         _listEquals(other.pronunciations, pronunciations) &&
         _listEquals(other.entryLabels, entryLabels) &&
+        _mapEquals(other.entryAttributes, entryAttributes) &&
+        _listEquals(other.relations, relations) &&
         _listEquals(other.senses, senses) &&
         _listEquals(other.collocations, collocations);
   }
@@ -40,9 +46,45 @@ class LexDbEntryDetail {
     headwordDisplay,
     Object.hashAll(pronunciations),
     Object.hashAll(entryLabels),
+    Object.hashAllUnordered(
+      entryAttributes.entries.map(
+        (entry) => Object.hash(entry.key, entry.value),
+      ),
+    ),
+    Object.hashAll(relations),
     Object.hashAll(senses),
     Object.hashAll(collocations),
   );
+}
+
+class LexDbRelation {
+  const LexDbRelation({
+    required this.relationType,
+    required this.clickable,
+    required this.targetWord,
+    this.prefix,
+    this.suffix,
+  });
+
+  final String relationType;
+  final String clickable;
+  final String targetWord;
+  final String? prefix;
+  final String? suffix;
+
+  @override
+  bool operator ==(Object other) {
+    return other is LexDbRelation &&
+        other.relationType == relationType &&
+        other.clickable == clickable &&
+        other.targetWord == targetWord &&
+        other.prefix == prefix &&
+        other.suffix == suffix;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(relationType, clickable, targetWord, prefix, suffix);
 }
 
 class LexDbPronunciation {
@@ -212,6 +254,21 @@ bool _listEquals<T>(List<T> left, List<T> right) {
   }
   for (var index = 0; index < left.length; index += 1) {
     if (left[index] != right[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _mapEquals<K, V>(Map<K, V> left, Map<K, V> right) {
+  if (identical(left, right)) {
+    return true;
+  }
+  if (left.length != right.length) {
+    return false;
+  }
+  for (final key in left.keys) {
+    if (left[key] != right[key]) {
       return false;
     }
   }

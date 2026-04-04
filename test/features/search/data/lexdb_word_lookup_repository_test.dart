@@ -45,6 +45,13 @@ void main() {
         'headword_display': 'a·ban·don·ment',
       });
       await database.insert('entries', <String, Object?>{
+        'id': 4,
+        'dict_id': 'ldoce',
+        'headword': 'abandon',
+        'headword_lower': 'abandon',
+        'headword_display': 'a·ban·don',
+      });
+      await database.insert('entries', <String, Object?>{
         'id': 3,
         'dict_id': 'ldoce',
         'headword': 'ability',

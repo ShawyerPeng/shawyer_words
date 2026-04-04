@@ -49,6 +49,75 @@ void main() {
     expect(entry.exampleSentence, 'They abandon the plan at sunrise.');
   });
 
+  test('does not treat css paths as pronunciation fallback', () {
+    final parser = MdxDictionaryParser();
+
+    final entry = parser.mapEntry(
+      word: 'absorb',
+      rawContent: '''
+<div class="entry">
+  <link rel="stylesheet" href="/css/main.css" />
+  <script src="/js/main.js"></script>
+  <div class="definition">to take in</div>
+</div>
+''',
+    );
+
+    expect(entry.pronunciation, isNull);
+    expect(entry.definition, 'to take in');
+  });
+
+  test('does not capture sound href fragments as pronunciation', () {
+    final parser = MdxDictionaryParser();
+
+    final entry = parser.mapEntry(
+      word: 'absorb',
+      rawContent: '''
+<div class="entry">
+  <a href="sound://00201.mp3">/əbˈzɔːrb/</a>
+  <div class="definition">to take in</div>
+</div>
+''',
+    );
+
+    expect(entry.pronunciation, '/əbˈzɔːrb/');
+    expect(entry.definition, 'to take in');
+  });
+
+  test('extracts pronunciation from anchor phonetic class without href noise', () {
+    final parser = MdxDictionaryParser();
+
+    final entry = parser.mapEntry(
+      word: 'career',
+      rawContent: '''
+<div class="entry">
+  <a class="phonetic" href="sound://00201.mp3">/kəˈrɪə(r)/</a>
+  <div class="definition">profession</div>
+</div>
+''',
+    );
+
+    expect(entry.pronunciation, '/kəˈrɪə(r)/');
+    expect(entry.pronunciation, isNot(contains('mp3')));
+  });
+
+  test('extracts non-slashed pronunciation from anchor phonetic class', () {
+    final parser = MdxDictionaryParser();
+
+    final entry = parser.mapEntry(
+      word: 'career',
+      rawContent: '''
+<div class="entry">
+  <a class="phonetic" href="sound://00201.mp3">kəˈrɪə(r)</a>
+  <div class="definition">profession</div>
+</div>
+''',
+    );
+
+    expect(entry.pronunciation, 'kəˈrɪə(r)');
+    expect(entry.pronunciation, isNot(contains('mp3')));
+  });
+
   test('allows legacy mdx dictionaries when the backend can read them', () async {
     final tempDir = await Directory.systemTemp.createTemp('legacy_mdx_test');
     final file = File('${tempDir.path}/legacy.mdx');

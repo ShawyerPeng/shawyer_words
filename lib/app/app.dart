@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart' hide SearchController;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
@@ -17,8 +19,8 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_catalog.dart
 import 'package:shawyer_words/features/dictionary/domain/dictionary_library_repository.dart';
 import 'package:shawyer_words/features/dictionary/domain/dictionary_storage.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
+import 'package:shawyer_words/features/search/data/file_system_search_history_repository.dart';
 import 'package:shawyer_words/features/search/data/installed_dictionary_word_lookup_repository.dart';
-import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
 import 'package:shawyer_words/features/search/data/lexdb_word_lookup_repository.dart';
 import 'package:shawyer_words/features/search/data/sample_word_lookup_repository.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
@@ -29,11 +31,15 @@ import 'package:shawyer_words/features/study/data/in_memory_study_repository.dar
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repository.dart';
+import 'package:shawyer_words/features/study_srs/data/sqlite_fsrs_repository.dart';
+import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
 import 'package:shawyer_words/features/word_detail/application/word_detail_controller.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_entry_lookup_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/lexdb_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/platform_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/data/sqlite_word_knowledge_repository.dart';
+import 'package:shawyer_words/features/word_detail/data/word_group_repository.dart';
+import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 typedef DictionaryFilePicker = Future<String?> Function();
@@ -48,8 +54,11 @@ class ShawyerWordsApp extends StatelessWidget {
     SettingsController? settingsController,
     StudyRepository? studyRepository,
     StudyPlanController? studyPlanController,
+    FsrsRepository? fsrsRepository,
     WordDetailPageBuilder? wordDetailPageBuilder,
+    WordKnowledgeRepository? wordKnowledgeRepository,
     String? lexDbPath,
+    String? thingDbPath,
     String lexDbDictionaryId = 'lexdb',
     String lexDbDictionaryName = 'LexDB',
     sqflite.DatabaseFactory? lexDbDatabaseFactory,
@@ -64,9 +73,12 @@ class ShawyerWordsApp extends StatelessWidget {
       catalog: dictionaryCatalog,
       storage: dictionaryStorage,
     );
-    final wordKnowledgeRepository = SqliteWordKnowledgeRepository(
-      databasePathResolver: _wordKnowledgeDatabasePath,
-    );
+    final resolvedWordKnowledgeRepository =
+        wordKnowledgeRepository ??
+        SqliteWordKnowledgeRepository(databasePathResolver: _wordKnowledgeDatabasePath);
+    final resolvedFsrsRepository =
+        fsrsRepository ??
+        SqliteFsrsRepository(databasePathResolver: _wordKnowledgeDatabasePath);
     final resolvedStudyRepository =
         studyRepository ?? InMemoryStudyRepository();
     final resolvedController =
@@ -79,6 +91,16 @@ class ShawyerWordsApp extends StatelessWidget {
     final resolvedDictionaryLibraryController =
         dictionaryLibraryController ??
         DictionaryLibraryController(repository: dictionaryLibraryRepository);
+    final resolvedThingDbPath = () {
+      if (thingDbPath != null && thingDbPath.trim().isNotEmpty) {
+        return thingDbPath;
+      }
+      if (lexDbPath == null || lexDbPath.trim().isEmpty) {
+        return null;
+      }
+      final siblingPath = '${File(lexDbPath).parent.path}/thing.db';
+      return File(siblingPath).existsSync() ? siblingPath : null;
+    }();
     late final WordDetailPageBuilder resolvedWordDetailPageBuilder;
     resolvedWordDetailPageBuilder =
         wordDetailPageBuilder ??
@@ -101,8 +123,15 @@ class ShawyerWordsApp extends StatelessWidget {
                       databaseFactory:
                           lexDbDatabaseFactory ?? sqflite.databaseFactory,
                     ),
+              wordGroupRepository: resolvedThingDbPath == null
+                  ? null
+                  : WordGroupRepository(
+                      databasePath: resolvedThingDbPath,
+                      databaseFactory:
+                          lexDbDatabaseFactory ?? sqflite.databaseFactory,
+                    ),
             ),
-            knowledgeRepository: wordKnowledgeRepository,
+            knowledgeRepository: resolvedWordKnowledgeRepository,
           ),
         );
 
@@ -114,7 +143,7 @@ class ShawyerWordsApp extends StatelessWidget {
           repository: FileSystemAppSettingsRepository(
             rootPathResolver: _settingsRootPath,
           ),
-          wordKnowledgeRepository: wordKnowledgeRepository,
+          wordKnowledgeRepository: resolvedWordKnowledgeRepository,
           systemSettingsOpener: const PlatformSystemSettingsOpener(),
         );
     if (resolvedSettingsController.state.status == SettingsStatus.idle) {
@@ -140,9 +169,13 @@ class ShawyerWordsApp extends StatelessWidget {
                     databaseFactory:
                         lexDbDatabaseFactory ?? sqflite.databaseFactory,
                   ),
-            historyRepository: InMemorySearchHistoryRepository(),
+            historyRepository: FileSystemSearchHistoryRepository(
+              rootPathResolver: _settingsRootPath,
+            ),
           ),
       settingsController: resolvedSettingsController,
+      wordKnowledgeRepository: resolvedWordKnowledgeRepository,
+      fsrsRepository: resolvedFsrsRepository,
       studyRepository: resolvedStudyRepository,
       studyPlanController:
           studyPlanController ??
@@ -158,6 +191,8 @@ class ShawyerWordsApp extends StatelessWidget {
     required this.pickDictionaryFile,
     required this.searchController,
     required this.settingsController,
+    required this.wordKnowledgeRepository,
+    required this.fsrsRepository,
     required this.studyRepository,
     required this.studyPlanController,
     required this.wordDetailPageBuilder,
@@ -168,6 +203,8 @@ class ShawyerWordsApp extends StatelessWidget {
   final DictionaryFilePicker pickDictionaryFile;
   final SearchController searchController;
   final SettingsController settingsController;
+  final WordKnowledgeRepository wordKnowledgeRepository;
+  final FsrsRepository fsrsRepository;
   final StudyRepository studyRepository;
   final StudyPlanController studyPlanController;
   final WordDetailPageBuilder wordDetailPageBuilder;
@@ -190,6 +227,8 @@ class ShawyerWordsApp extends StatelessWidget {
             pickDictionaryFile: pickDictionaryFile,
             searchController: searchController,
             settingsController: settingsController,
+            wordKnowledgeRepository: wordKnowledgeRepository,
+            fsrsRepository: fsrsRepository,
             studyPlanController: studyPlanController,
             studyRepository: studyRepository,
             wordDetailPageBuilder: wordDetailPageBuilder,

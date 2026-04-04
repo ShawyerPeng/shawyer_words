@@ -124,21 +124,28 @@ class SqliteWordKnowledgeRepository implements WordKnowledgeRepository {
           options: OpenDatabaseOptions(
             version: 1,
             onCreate: (db, _) async {
-              await db.execute('''
-            CREATE TABLE $_tableName (
-              word TEXT PRIMARY KEY,
-              is_favorite INTEGER NOT NULL DEFAULT 0,
-              is_known INTEGER NOT NULL DEFAULT 0,
-              note TEXT NOT NULL DEFAULT '',
-              skip_known_confirm INTEGER NOT NULL DEFAULT 0,
-              updated_at TEXT NOT NULL
-            )
-          ''');
+              await _ensureTable(db);
+            },
+            onOpen: (db) async {
+              await _ensureTable(db);
             },
           ),
         );
     _database = database;
     return database;
+  }
+
+  Future<void> _ensureTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_tableName (
+        word TEXT PRIMARY KEY,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        is_known INTEGER NOT NULL DEFAULT 0,
+        note TEXT NOT NULL DEFAULT '',
+        skip_known_confirm INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<String> _resolveDatabasePath() async {

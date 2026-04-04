@@ -52,10 +52,11 @@ class LexDbWordLookupRepository implements WordLookupRepository {
       ...exactRows.map(_mapRow),
       ...prefixRows.map(_mapRow),
     ];
+    final dedupedEntries = _dedupeByHeadword(entries, limit: limit);
     _cachedEntriesById = <String, WordEntry>{
-      for (final entry in entries) entry.id: entry,
+      for (final entry in dedupedEntries) entry.id: entry,
     };
-    return entries;
+    return dedupedEntries;
   }
 
   Future<Database> _openDatabase() async {
@@ -74,5 +75,21 @@ class LexDbWordLookupRepository implements WordLookupRepository {
       word: row['headword'] as String,
       rawContent: '',
     );
+  }
+
+  List<WordEntry> _dedupeByHeadword(List<WordEntry> entries, {required int limit}) {
+    final seenHeadwords = <String>{};
+    final deduped = <WordEntry>[];
+    for (final entry in entries) {
+      final headword = entry.word.trim().toLowerCase();
+      if (headword.isEmpty || !seenHeadwords.add(headword)) {
+        continue;
+      }
+      deduped.add(entry);
+      if (deduped.length >= limit) {
+        break;
+      }
+    }
+    return deduped;
   }
 }
