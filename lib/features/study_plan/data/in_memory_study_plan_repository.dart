@@ -336,7 +336,7 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
       final api = _buildGitHubContentsApiUri(raw);
       return <Uri>[
         raw,
-        if (api != null) api,
+        if (api != null) ...<Uri>[api],
       ];
     }
     final githubApiUri = _buildGitHubContentsApiUri(uri);

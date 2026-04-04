@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart' hide SearchController;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite/sqlite_api.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:shawyer_words/app/app.dart';
 import 'package:shawyer_words/features/dictionary/application/dictionary_controller.dart';
@@ -25,6 +24,7 @@ import 'package:shawyer_words/features/word_detail/domain/word_detail_repository
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
+// ignore: depend_on_referenced_packages
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 
 void main() {

@@ -60,10 +60,7 @@ class _StudyTaskSettingsPageState extends State<StudyTaskSettingsPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFBFF2E1),
-              Color(0xFFF3F5FA),
-            ],
+            colors: [Color(0xFFBFF2E1), Color(0xFFF3F5FA)],
           ),
         ),
         child: SafeArea(
@@ -96,7 +93,9 @@ class _StudyTaskSettingsPageState extends State<StudyTaskSettingsPage> {
                       const SizedBox(height: 14),
                       _TaskSettingsCard(
                         ratioLabel: '1:$_reviewRatio',
-                        estimatedFinishDate: _estimatedFinishDate(book.wordCount),
+                        estimatedFinishDate: _estimatedFinishDate(
+                          book.wordCount,
+                        ),
                         options: _dailyNewOptions,
                         selectedDailyNew: _dailyNew,
                         reviewRatio: _reviewRatio,
@@ -126,7 +125,10 @@ class _StudyTaskSettingsPageState extends State<StudyTaskSettingsPage> {
                     ),
                     child: const Text(
                       '完成设置',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -147,13 +149,6 @@ class _StudyTaskSettingsPageState extends State<StudyTaskSettingsPage> {
     );
     final days = (wordCount / _dailyNew).ceil();
     return today.add(Duration(days: days - 1));
-  }
-
-  String _formatChineseDate(DateTime date) {
-    final y = date.year.toString().padLeft(4, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return '$y年$m月$d日';
   }
 
   Future<void> _openRatioPicker() async {
@@ -185,9 +180,9 @@ class _StudyTaskSettingsPageState extends State<StudyTaskSettingsPage> {
                 const SizedBox(height: 18),
                 Text(
                   '新词复习比例',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 10),
                 for (final ratio in const <int>[1, 2, 3, 4])
@@ -237,9 +232,9 @@ class _StudyTaskSettingsPageState extends State<StudyTaskSettingsPage> {
                   child: Text(
                     '复习词过少会导致单词复习次数不足，影响长期记忆。除非你已能熟练掌握，请谨慎选择较低比例；计划中途频繁更改比例可能会打乱复习节奏。',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white,
-                          height: 1.45,
-                        ),
+                      color: Colors.white,
+                      height: 1.45,
+                    ),
                   ),
                 ),
               ),
@@ -352,7 +347,9 @@ class _TaskSettingsCardState extends State<_TaskSettingsCard> {
   void initState() {
     super.initState();
     _selectedIndex = _indexOfDailyNew(widget.selectedDailyNew);
-    _scrollController = FixedExtentScrollController(initialItem: _selectedIndex);
+    _scrollController = FixedExtentScrollController(
+      initialItem: _selectedIndex,
+    );
   }
 
   @override
@@ -632,9 +629,9 @@ class _BookCover extends StatelessWidget {
         title.replaceAll('乱序完整版', '').split(' ').first,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF10C28E),
-            ),
+          fontWeight: FontWeight.w800,
+          color: const Color(0xFF10C28E),
+        ),
       ),
     );
   }

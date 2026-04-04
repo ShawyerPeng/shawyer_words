@@ -149,7 +149,9 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
                           children: [
                             IconButton(
                               onPressed: () => Navigator.of(tabContext).pop(),
-                              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                              icon: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                              ),
                             ),
                             const SizedBox(width: 6),
                             Expanded(
@@ -165,18 +167,24 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
                               tooltip: '标记掌握',
                               onPressed: _loading || _batchWorking
                                   ? null
-                                  : () => _confirmMarkKnown(tabContext, computed),
+                                  : () =>
+                                        _confirmMarkKnown(tabContext, computed),
                               icon: const Icon(
                                 Icons.done_all_rounded,
                                 color: Color(0xFF99A1B2),
                               ),
                             ),
                             IconButton(
-                              key: const ValueKey('wordlist-action-add-notebook'),
+                              key: const ValueKey(
+                                'wordlist-action-add-notebook',
+                              ),
                               tooltip: '加入生词本',
                               onPressed: _loading || _batchWorking
                                   ? null
-                                  : () => _confirmAddToNotebook(tabContext, computed),
+                                  : () => _confirmAddToNotebook(
+                                      tabContext,
+                                      computed,
+                                    ),
                               icon: const Icon(
                                 Icons.playlist_add_rounded,
                                 color: Color(0xFF99A1B2),
@@ -232,10 +240,8 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
                         labelStyle: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
-                        unselectedLabelStyle:
-                            theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        unselectedLabelStyle: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                         indicatorColor: const Color(0xFF10C28E),
                         indicatorWeight: 3,
                       ),
@@ -243,35 +249,35 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
                         child: _loading
                             ? const Center(child: CircularProgressIndicator())
                             : (_errorMessage != null
-                                ? Center(child: Text(_errorMessage!))
-                                : TabBarView(
-                                    children: [
-                                      _TodayTaskTab(
-                                        computed: computed,
-                                        onRefresh: _reload,
-                                        onOpenWord: _openWord,
-                                        displayMode: _displayMode,
-                                      ),
-                                      _WordEntryListTab(
-                                        items: computed.learning,
-                                        onRefresh: _reload,
-                                        onOpenWord: _openWord,
-                                        displayMode: _displayMode,
-                                      ),
-                                      _WordEntryListTab(
-                                        items: computed.unlearned,
-                                        onRefresh: _reload,
-                                        onOpenWord: _openWord,
-                                        displayMode: _displayMode,
-                                      ),
-                                      _WordEntryListTab(
-                                        items: computed.easy,
-                                        onRefresh: _reload,
-                                        onOpenWord: _openWord,
-                                        displayMode: _displayMode,
-                                      ),
-                                    ],
-                                  )),
+                                  ? Center(child: Text(_errorMessage!))
+                                  : TabBarView(
+                                      children: [
+                                        _TodayTaskTab(
+                                          computed: computed,
+                                          onRefresh: _reload,
+                                          onOpenWord: _openWord,
+                                          displayMode: _displayMode,
+                                        ),
+                                        _WordEntryListTab(
+                                          items: computed.learning,
+                                          onRefresh: _reload,
+                                          onOpenWord: _openWord,
+                                          displayMode: _displayMode,
+                                        ),
+                                        _WordEntryListTab(
+                                          items: computed.unlearned,
+                                          onRefresh: _reload,
+                                          onOpenWord: _openWord,
+                                          displayMode: _displayMode,
+                                        ),
+                                        _WordEntryListTab(
+                                          items: computed.easy,
+                                          onRefresh: _reload,
+                                          onOpenWord: _openWord,
+                                          displayMode: _displayMode,
+                                        ),
+                                      ],
+                                    )),
                       ),
                     ],
                   );
@@ -328,23 +334,29 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                RadioListTile<_WordListDisplayMode>(
-                  title: const Text('全部显示'),
-                  value: _WordListDisplayMode.all,
+                RadioGroup<_WordListDisplayMode>(
                   groupValue: _displayMode,
-                  onChanged: (value) => Navigator.of(context).pop(value),
-                ),
-                RadioListTile<_WordListDisplayMode>(
-                  title: const Text('遮挡释义'),
-                  value: _WordListDisplayMode.maskDefinition,
-                  groupValue: _displayMode,
-                  onChanged: (value) => Navigator.of(context).pop(value),
-                ),
-                RadioListTile<_WordListDisplayMode>(
-                  title: const Text('遮挡单词'),
-                  value: _WordListDisplayMode.maskWord,
-                  groupValue: _displayMode,
-                  onChanged: (value) => Navigator.of(context).pop(value),
+                  onChanged: (value) {
+                    if (value != null) {
+                      Navigator.of(context).pop(value);
+                    }
+                  },
+                  child: Column(
+                    children: const [
+                      RadioListTile<_WordListDisplayMode>(
+                        title: Text('全部显示'),
+                        value: _WordListDisplayMode.all,
+                      ),
+                      RadioListTile<_WordListDisplayMode>(
+                        title: Text('遮挡释义'),
+                        value: _WordListDisplayMode.maskDefinition,
+                      ),
+                      RadioListTile<_WordListDisplayMode>(
+                        title: Text('遮挡单词'),
+                        value: _WordListDisplayMode.maskWord,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -358,14 +370,17 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
     setState(() => _displayMode = selected);
   }
 
-  Future<void> _confirmMarkKnown(BuildContext context, _ComputedLists computed) async {
-    final tabController = DefaultTabController.of(context);
+  Future<void> _confirmMarkKnown(
+    BuildContext context,
+    _ComputedLists computed,
+  ) async {
+    final tabController = DefaultTabController.maybeOf(context);
     final tabIndex = tabController?.index ?? 0;
     final items = _entriesForTab(computed, tabIndex);
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('当前列表暂无可操作单词')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('当前列表暂无可操作单词')));
       return;
     }
     final confirmed = await showDialog<bool>(
@@ -387,7 +402,7 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
         );
       },
     );
-    if (confirmed != true || !mounted) {
+    if (confirmed != true || !context.mounted) {
       return;
     }
     await _runBatch(
@@ -401,21 +416,21 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
     BuildContext context,
     _ComputedLists computed,
   ) async {
-    final tabController = DefaultTabController.of(context);
+    final tabController = DefaultTabController.maybeOf(context);
     final tabIndex = tabController?.index ?? 0;
     final items = _entriesForTab(computed, tabIndex);
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('当前列表暂无可操作单词')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('当前列表暂无可操作单词')));
       return;
     }
 
     final notebooks = widget.studyPlanController.state.notebooks;
     if (notebooks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('暂无可用生词本')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('暂无可用生词本')));
       return;
     }
     final notebook = notebooks.firstWhere(
@@ -442,7 +457,7 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
         );
       },
     );
-    if (confirmed != true || !mounted) {
+    if (confirmed != true || !context.mounted) {
       return;
     }
 
@@ -451,7 +466,8 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
       message: '正在加入生词本...',
       task: () async {
         final words = <String>{
-          for (final entry in items) WordKnowledgeRecord.normalizeWord(entry.word),
+          for (final entry in items)
+            WordKnowledgeRecord.normalizeWord(entry.word),
         }.toList(growable: false);
         await widget.studyPlanController.importWordsToNotebook(
           notebookId: notebook.id,
@@ -491,7 +507,9 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
       builder: (context) {
         return Dialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
             child: Row(
@@ -515,17 +533,17 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
         return;
       }
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('操作完成')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('操作完成')));
     } catch (error) {
       if (!context.mounted) {
         return;
       }
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('操作失败：$error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('操作失败：$error')));
     } finally {
       if (mounted) {
         setState(() => _batchWorking = false);
@@ -537,7 +555,11 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
 enum _WordListTabType { today, learning, unlearned, easy }
 
 class _WordListTab {
-  const _WordListTab({required this.key, required this.label, required this.type});
+  const _WordListTab({
+    required this.key,
+    required this.label,
+    required this.type,
+  });
 
   final Key key;
   final String label;
@@ -606,26 +628,27 @@ _ComputedLists _computeLists({
 
   final easy = <WordEntry>[for (final key in easyKeys) byWord[key]!];
 
-  final learningKeys = <String>[
-    for (final key in cardsByWord.keys)
-      if (byWord.containsKey(key) &&
-          !easyKeys.contains(key) &&
-          !masteredKeys.contains(key))
-        key,
-  ]..sort((a, b) {
-    final ac = cardsByWord[a];
-    final bc = cardsByWord[b];
-    if (ac == null && bc == null) {
-      return 0;
-    }
-    if (ac == null) {
-      return 1;
-    }
-    if (bc == null) {
-      return -1;
-    }
-    return ac.due.compareTo(bc.due);
-  });
+  final learningKeys =
+      <String>[
+        for (final key in cardsByWord.keys)
+          if (byWord.containsKey(key) &&
+              !easyKeys.contains(key) &&
+              !masteredKeys.contains(key))
+            key,
+      ]..sort((a, b) {
+        final ac = cardsByWord[a];
+        final bc = cardsByWord[b];
+        if (ac == null && bc == null) {
+          return 0;
+        }
+        if (ac == null) {
+          return 1;
+        }
+        if (bc == null) {
+          return -1;
+        }
+        return ac.due.compareTo(bc.due);
+      });
 
   final learning = <WordEntry>[for (final key in learningKeys) byWord[key]!];
 
@@ -640,8 +663,10 @@ _ComputedLists _computeLists({
   }
 
   final dailyNew = settings.dailyStudyTarget.clamp(1, 200);
-  final dailyReview =
-      (dailyNew * settings.dailyReviewLimitMultiplier).clamp(0, 2000);
+  final dailyReview = (dailyNew * settings.dailyReviewLimitMultiplier).clamp(
+    0,
+    2000,
+  );
 
   final todayNew = unlearned.take(dailyNew).toList(growable: false);
   final todayReview = <WordEntry>[
@@ -777,7 +802,7 @@ class _WordEntryListTab extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
         itemCount: items.length,
-        separatorBuilder: (_, __) =>
+        separatorBuilder: (_, _) =>
             const Divider(height: 1, color: Color(0xFFE8ECF2)),
         itemBuilder: (context, index) {
           final entry = items[index];
@@ -804,16 +829,19 @@ class _SectionHeader extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: label == '新词' ? const Color(0xFFE8FBF3) : const Color(0xFFFFF3E0),
+          color: label == '新词'
+              ? const Color(0xFFE8FBF3)
+              : const Color(0xFFFFF3E0),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color:
-                    label == '新词' ? const Color(0xFF10C28E) : const Color(0xFFFF8A00),
-                fontWeight: FontWeight.w800,
-              ),
+            color: label == '新词'
+                ? const Color(0xFF10C28E)
+                : const Color(0xFFFF8A00),
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );
