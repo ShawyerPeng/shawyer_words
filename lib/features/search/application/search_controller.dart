@@ -33,7 +33,9 @@ class SearchController extends ChangeNotifier {
     required SearchHistoryRepository historyRepository,
   }) : _lookupRepository = lookupRepository,
        _historyRepository = historyRepository,
-       _state = SearchState(history: historyRepository.loadHistory());
+       _state = const SearchState() {
+    _restoreHistory();
+  }
 
   final WordLookupRepository _lookupRepository;
   final SearchHistoryRepository _historyRepository;
@@ -43,13 +45,20 @@ class SearchController extends ChangeNotifier {
 
   SearchState get state => _state;
 
+  Future<void> _restoreHistory() async {
+    final history = await _historyRepository.loadHistory();
+    _state = _state.copyWith(history: history);
+    notifyListeners();
+  }
+
   Future<void> updateQuery(String query) async {
     final requestId = ++_searchRequestId;
     final normalized = query.trim();
+    final history = await _historyRepository.loadHistory();
     _state = _state.copyWith(
       query: query,
       results: normalized.isEmpty ? const <WordEntry>[] : const <WordEntry>[],
-      history: _historyRepository.loadHistory(),
+      history: history,
     );
     notifyListeners();
 
@@ -61,26 +70,41 @@ class SearchController extends ChangeNotifier {
     if (requestId != _searchRequestId || _state.query != query) {
       return;
     }
+    final dedupedResults = _dedupeByHeadword(results);
 
+    final refreshedHistory = await _historyRepository.loadHistory();
     _state = _state.copyWith(
       query: query,
-      results: results,
-      history: _historyRepository.loadHistory(),
+      results: dedupedResults,
+      history: refreshedHistory,
     );
     notifyListeners();
   }
 
   Future<void> selectEntry(WordEntry entry) async {
-    _historyRepository.saveEntry(entry);
-    _state = _state.copyWith(history: _historyRepository.loadHistory());
+    await _historyRepository.saveEntry(entry);
+    _state = _state.copyWith(history: await _historyRepository.loadHistory());
     notifyListeners();
   }
 
   Future<void> clearHistory() async {
-    _historyRepository.clear();
-    _state = _state.copyWith(history: _historyRepository.loadHistory());
+    await _historyRepository.clear();
+    _state = _state.copyWith(history: await _historyRepository.loadHistory());
     notifyListeners();
   }
 
   WordEntry? findById(String id) => _lookupRepository.findById(id);
+
+  List<WordEntry> _dedupeByHeadword(List<WordEntry> entries) {
+    final seenHeadwords = <String>{};
+    final deduped = <WordEntry>[];
+    for (final entry in entries) {
+      final headword = entry.word.trim().toLowerCase();
+      if (headword.isEmpty || !seenHeadwords.add(headword)) {
+        continue;
+      }
+      deduped.add(entry);
+    }
+    return deduped;
+  }
 }

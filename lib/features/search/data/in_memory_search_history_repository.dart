@@ -5,17 +5,17 @@ class InMemorySearchHistoryRepository implements SearchHistoryRepository {
   final List<WordEntry> _history = <WordEntry>[];
 
   @override
-  void clear() {
+  Future<void> clear() async {
     _history.clear();
   }
 
   @override
-  List<WordEntry> loadHistory() {
+  Future<List<WordEntry>> loadHistory() async {
     return List<WordEntry>.unmodifiable(_history);
   }
 
   @override
-  void saveEntry(WordEntry entry, {int limit = 10}) {
+  Future<void> saveEntry(WordEntry entry, {int limit = 10}) async {
     _history.removeWhere((item) => item.id == entry.id);
     _history.insert(0, entry);
     if (_history.length > limit) {

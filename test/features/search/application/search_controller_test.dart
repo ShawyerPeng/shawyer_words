@@ -30,6 +30,13 @@ void main() {
             definition: '事业, 职业',
             rawContent: '<p>career</p>',
           ),
+          const WordEntry(
+            id: 'nut-dup',
+            word: 'Nut',
+            partOfSpeech: 'n.',
+            definition: '坚果（重复）',
+            rawContent: '<p>nut dup</p>',
+          ),
         ],
       ),
       historyRepository: InMemorySearchHistoryRepository(),

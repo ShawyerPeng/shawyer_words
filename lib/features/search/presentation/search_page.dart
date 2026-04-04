@@ -169,6 +169,7 @@ class _SearchPageState extends State<SearchPage> {
                               leadingBuilder: (_) => const Icon(
                                 Icons.history_rounded,
                                 color: Color(0xFFA0A7B7),
+                                size: 20,
                               ),
                               onTap: _openEntry,
                             )
@@ -177,6 +178,7 @@ class _SearchPageState extends State<SearchPage> {
                               leadingBuilder: (_) => const Icon(
                                 Icons.search_rounded,
                                 color: Color(0xFFA0A7B7),
+                                size: 20,
                               ),
                               onTap: _openEntry,
                               emptyText: '没有找到匹配的单词',
@@ -270,17 +272,22 @@ class _WordList extends StatelessWidget {
 
     return ListView.separated(
       itemCount: entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
+      separatorBuilder: (_, _) => const SizedBox(height: 2),
       itemBuilder: (context, index) {
         final entry = entries[index];
         return ListTile(
           onTap: () => onTap(entry),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          dense: true,
+          visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+          minLeadingWidth: 20,
+          horizontalTitleGap: 8,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
           leading: leadingBuilder(entry),
           title: Text(
             entry.word,
-            style: theme.textTheme.headlineSmall?.copyWith(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w800,
+              fontSize: 22,
             ),
           ),
           subtitle: Text(
@@ -292,8 +299,9 @@ class _WordList extends StatelessWidget {
             ].join('  '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyLarge?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: const Color(0xFF9AA2B4),
+              fontSize: 13,
             ),
           ),
         );
