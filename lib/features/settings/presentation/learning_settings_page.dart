@@ -3,11 +3,27 @@ import 'package:shawyer_words/features/settings/application/settings_controller.
 import 'package:shawyer_words/features/settings/domain/app_settings.dart';
 import 'package:shawyer_words/features/settings/presentation/general_settings_page.dart';
 import 'package:shawyer_words/features/settings/presentation/reminder_settings_page.dart';
+import 'package:shawyer_words/features/settings/presentation/study_plan_settings_page.dart';
+import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
+import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
+import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
+import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 class LearningSettingsPage extends StatelessWidget {
-  const LearningSettingsPage({super.key, required this.controller});
+  const LearningSettingsPage({
+    super.key,
+    required this.controller,
+    this.studyPlanController,
+    this.wordKnowledgeRepository,
+    this.fsrsRepository,
+    this.wordDetailPageBuilder,
+  });
 
   final SettingsController controller;
+  final StudyPlanController? studyPlanController;
+  final WordKnowledgeRepository? wordKnowledgeRepository;
+  final FsrsRepository? fsrsRepository;
+  final WordDetailPageBuilder? wordDetailPageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +72,30 @@ class LearningSettingsPage extends StatelessWidget {
                       ),
                     ),
                     SettingsActionTile(
+                      title: '学习计划',
+                      onTap:
+                          studyPlanController == null ||
+                                  wordKnowledgeRepository == null ||
+                                  fsrsRepository == null ||
+                                  wordDetailPageBuilder == null
+                              ? null
+                              : () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => StudyPlanSettingsPage(
+                                      settingsController: controller,
+                                      studyPlanController: studyPlanController!,
+                                      wordKnowledgeRepository:
+                                          wordKnowledgeRepository!,
+                                      fsrsRepository: fsrsRepository!,
+                                      wordDetailPageBuilder:
+                                          wordDetailPageBuilder!,
+                                    ),
+                                  ),
+                                ),
+                    ),
+                    SettingsActionTile(
                       title: '每日学习计划',
-                      value: '${settings.dailyStudyTarget} 词/天',
+                      value: '${settings.dailyStudyTarget} 新词/天',
                       onTap: () => showSingleChoiceSheet<int>(
                         context,
                         title: '每日学习计划',
@@ -69,6 +107,22 @@ class LearningSettingsPage extends StatelessWidget {
                           SettingsOption(value: 50, label: '50 词/天'),
                         ],
                         onSelected: controller.updateDailyStudyTarget,
+                      ),
+                    ),
+                    SettingsActionTile(
+                      title: '新词复习比例',
+                      value: '1:${settings.dailyReviewRatio}',
+                      onTap: () => showSingleChoiceSheet<int>(
+                        context,
+                        title: '新词复习比例',
+                        currentValue: settings.dailyReviewRatio,
+                        options: const <SettingsOption<int>>[
+                          SettingsOption(value: 1, label: '1:1'),
+                          SettingsOption(value: 2, label: '1:2'),
+                          SettingsOption(value: 3, label: '1:3'),
+                          SettingsOption(value: 4, label: '1:4'),
+                        ],
+                        onSelected: controller.updateDailyReviewRatio,
                       ),
                     ),
                   ],
