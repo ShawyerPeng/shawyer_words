@@ -63,6 +63,28 @@ class WordCardView extends StatelessWidget {
                       ),
                     ],
                   )
+                else if (definitionVisible)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '该词条暂无内置释义',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: const Color(0xFF8A93A6),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: onOpenDetail,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: const Color(0xFF10C28E),
+                        ),
+                        child: const Text('查看完整释义'),
+                      ),
+                    ],
+                  )
                 else
                   const _MaskedDefinitionLines(),
               ],

@@ -82,48 +82,49 @@ void main() {
     expect(find.text('好的'), findsOneWidget);
   });
 
-  testWidgets('shows inline import button under visible section and skips picker overlay', (
-    tester,
-  ) async {
-    final controller = DictionaryLibraryController(
-      repository: _FakeDictionaryLibraryRepository(),
-    );
-    final importController = DictionaryController(
-      dictionaryRepository: _FakeDictionaryRepository(),
-      previewRepository: _FakeDictionaryPreviewRepository(),
-      studyRepository: _FakeStudyRepository(),
-    );
-    final picker = _CountingPicker('/tmp/main.mdx');
+  testWidgets(
+    'shows inline import button under visible section and skips picker overlay',
+    (tester) async {
+      final controller = DictionaryLibraryController(
+        repository: _FakeDictionaryLibraryRepository(),
+      );
+      final importController = DictionaryController(
+        dictionaryRepository: _FakeDictionaryRepository(),
+        previewRepository: _FakeDictionaryPreviewRepository(),
+        studyRepository: _FakeStudyRepository(),
+      );
+      final picker = _CountingPicker('/tmp/main.mdx');
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DictionaryLibraryManagementPage(
-          controller: controller,
-          dictionaryController: importController,
-          pickDictionaryFile: picker.call,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DictionaryLibraryManagementPage(
+            controller: controller,
+            dictionaryController: importController,
+            pickDictionaryFile: picker.call,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('显示的词库'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, '导入词库'), findsOneWidget);
+      expect(find.text('显示的词库'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, '导入词库'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(TextButton, '导入词库'));
-    await tester.pump();
-    await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, '导入词库'));
+      await tester.pump();
+      await tester.pump();
 
-    expect(picker.calls, 1);
-    expect(
-      find.byKey(const ValueKey('dictionary-import-overlay')),
-      findsNothing,
-    );
-    expect(find.text('确认导入'), findsOneWidget);
-    expect(
-      importController.state.importSession.stage,
-      DictionaryImportSessionStage.confirming,
-    );
-  });
+      expect(picker.calls, 1);
+      expect(
+        find.byKey(const ValueKey('dictionary-import-overlay')),
+        findsNothing,
+      );
+      expect(find.text('确认导入'), findsOneWidget);
+      expect(
+        importController.state.importSession.stage,
+        DictionaryImportSessionStage.confirming,
+      );
+    },
+  );
 }
 
 class _CountingPicker {
@@ -294,4 +295,9 @@ class _FakeStudyRepository implements StudyRepository {
     required String entryId,
     required StudyDecisionType decision,
   }) async {}
+
+  @override
+  Future<List<StudyDecisionRecord>> loadDecisionRecords() async {
+    return const <StudyDecisionRecord>[];
+  }
 }

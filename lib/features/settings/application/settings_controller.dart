@@ -131,6 +131,54 @@ class SettingsController extends ChangeNotifier {
     return _save(_state.settings.copyWith(dailyStudyTarget: target));
   }
 
+  Future<void> updateDailyReviewRatio(int ratio) {
+    return _save(_state.settings.copyWith(dailyReviewRatio: ratio));
+  }
+
+  Future<void> updateDailyReviewLimitMultiplier(int multiplier) {
+    return _save(
+      _state.settings.copyWith(dailyReviewLimitMultiplier: multiplier),
+    );
+  }
+
+  Future<void> updateSmartReviewEnabled(bool enabled) {
+    return _save(_state.settings.copyWith(smartReviewEnabled: enabled));
+  }
+
+  Future<void> updateStudyMode(StudyMode mode) {
+    return _save(_state.settings.copyWith(studyMode: mode));
+  }
+
+  Future<void> updateWordPreviewEnabled(bool enabled) {
+    return _save(_state.settings.copyWith(wordPreviewEnabled: enabled));
+  }
+
+  Future<void> updateWordPickMode(WordPickMode mode) {
+    return _save(_state.settings.copyWith(wordPickMode: mode));
+  }
+
+  Future<void> updateNewWordOrder(NewWordOrder order) {
+    return _save(_state.settings.copyWith(newWordOrder: order));
+  }
+
+  Future<void> updateReviewOrder(ReviewOrder order) {
+    return _save(_state.settings.copyWith(reviewOrder: order));
+  }
+
+  Future<void> updateStudyPlanningMode(StudyPlanningMode mode) {
+    return _save(_state.settings.copyWith(studyPlanningMode: mode));
+  }
+
+  Future<void> updateKnownWordAccelerationEnabled(bool enabled) {
+    return _save(
+      _state.settings.copyWith(knownWordAccelerationEnabled: enabled),
+    );
+  }
+
+  Future<void> updateMultiBookEnabled(bool enabled) {
+    return _save(_state.settings.copyWith(multiBookEnabled: enabled));
+  }
+
   Future<void> updateSelectedWordBook({
     required String id,
     required String name,

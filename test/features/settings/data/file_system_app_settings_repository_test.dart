@@ -29,8 +29,7 @@ void main() {
     });
 
     test('persists and reloads settings', () async {
-      const expected = AppSettings(
-        myLanguage: '中文',
+      final expected = const AppSettings.defaults().copyWith(
         appearanceMode: AppAppearanceMode.dark,
         themeName: 'forest',
         fontScale: AppFontScale.large,
@@ -38,6 +37,7 @@ void main() {
         autoPlayPronunciation: false,
         showConversationTranslationByDefault: false,
         dailyStudyTarget: 35,
+        studyPlanningMode: StudyPlanningMode.sprint,
         reminderEnabled: true,
         reminderHour: 7,
         reminderMinute: 45,

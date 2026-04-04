@@ -202,7 +202,8 @@ class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {
     return WordEntry(
       id: key,
       word: key,
-      rawContent: '<div class="definition">Definition ${key.split('-').last}</div>',
+      rawContent:
+          '<div class="definition">Definition ${key.split('-').last}</div>',
     );
   }
 }
@@ -213,6 +214,11 @@ class _FakeStudyRepository implements StudyRepository {
     required String entryId,
     required StudyDecisionType decision,
   }) async {}
+
+  @override
+  Future<List<StudyDecisionRecord>> loadDecisionRecords() async {
+    return const <StudyDecisionRecord>[];
+  }
 }
 
 DictionaryImportPreview _preview() {

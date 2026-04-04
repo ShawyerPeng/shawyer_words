@@ -5,16 +5,31 @@ import 'package:shawyer_words/features/settings/presentation/help_feedback_page.
 import 'package:shawyer_words/features/settings/presentation/learning_settings_page.dart';
 import 'package:shawyer_words/features/settings/presentation/membership_center_page.dart';
 import 'package:shawyer_words/features/settings/presentation/study_statistics_page.dart';
+import 'package:shawyer_words/features/study/domain/study_repository.dart';
+import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
+import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
+import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
+import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 class MePage extends StatelessWidget {
   const MePage({
     super.key,
     required this.settingsController,
+    this.studyPlanController,
+    this.studyRepository,
+    this.wordKnowledgeRepository,
+    this.fsrsRepository,
+    this.wordDetailPageBuilder,
     this.dictionaryLibraryManagementPageBuilder,
     this.showCloseButton = true,
   });
 
   final SettingsController settingsController;
+  final StudyPlanController? studyPlanController;
+  final StudyRepository? studyRepository;
+  final WordKnowledgeRepository? wordKnowledgeRepository;
+  final FsrsRepository? fsrsRepository;
+  final WordDetailPageBuilder? wordDetailPageBuilder;
   final WidgetBuilder? dictionaryLibraryManagementPageBuilder;
   final bool showCloseButton;
 
@@ -145,8 +160,13 @@ class MePage extends StatelessWidget {
               subtitle: '单词书、提醒、发音和翻译显示',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) =>
-                      LearningSettingsPage(controller: settingsController),
+                  builder: (_) => LearningSettingsPage(
+                    controller: settingsController,
+                    studyPlanController: studyPlanController,
+                    wordKnowledgeRepository: wordKnowledgeRepository,
+                    fsrsRepository: fsrsRepository,
+                    wordDetailPageBuilder: wordDetailPageBuilder,
+                  ),
                 ),
               ),
             ),
@@ -155,12 +175,23 @@ class MePage extends StatelessWidget {
               icon: Icons.query_stats_rounded,
               title: '数据统计',
               subtitle: '热力图、词汇量增长和每日学习趋势',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      StudyStatisticsPage(controller: settingsController),
-                ),
-              ),
+              onTap:
+                  studyPlanController == null ||
+                      studyRepository == null ||
+                      wordKnowledgeRepository == null ||
+                      fsrsRepository == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => StudyStatisticsPage(
+                          controller: settingsController,
+                          studyPlanController: studyPlanController!,
+                          studyRepository: studyRepository!,
+                          wordKnowledgeRepository: wordKnowledgeRepository!,
+                          fsrsRepository: fsrsRepository!,
+                        ),
+                      ),
+                    ),
             ),
             const SizedBox(height: 14),
             _MenuTile(

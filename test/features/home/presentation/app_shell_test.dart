@@ -92,6 +92,11 @@ class _FakeStudyRepository implements StudyRepository {
     required String entryId,
     required StudyDecisionType decision,
   }) async {}
+
+  @override
+  Future<List<StudyDecisionRecord>> loadDecisionRecords() async {
+    return const <StudyDecisionRecord>[];
+  }
 }
 
 class _FakeDictionaryPreviewRepository implements DictionaryPreviewRepository {

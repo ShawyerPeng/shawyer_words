@@ -10,16 +10,17 @@ class InMemoryStudyRepository implements StudyRepository {
     required String entryId,
     required StudyDecisionType decision,
   }) async {
-    decisions.add(StudyDecisionRecord(entryId: entryId, decision: decision));
+    decisions.add(
+      StudyDecisionRecord(
+        entryId: entryId,
+        decision: decision,
+        recordedAt: DateTime.now(),
+      ),
+    );
   }
-}
 
-class StudyDecisionRecord {
-  const StudyDecisionRecord({
-    required this.entryId,
-    required this.decision,
-  });
-
-  final String entryId;
-  final StudyDecisionType decision;
+  @override
+  Future<List<StudyDecisionRecord>> loadDecisionRecords() async {
+    return List<StudyDecisionRecord>.unmodifiable(decisions);
+  }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,31 +7,56 @@ import 'package:shawyer_words/features/study_plan/domain/official_vocabulary_boo
 import 'package:shawyer_words/features/study_plan/domain/study_plan_models.dart';
 import 'package:shawyer_words/features/study_plan/domain/study_plan_repository.dart';
 
-typedef RemoteVocabularyLoader = Future<String> Function(Uri uri);
+typedef RemoteVocabularyLoader =
+    Future<String> Function(
+      Uri uri, {
+      VocabularyDownloadProgressCallback? onProgress,
+    });
 
 class InMemoryStudyPlanRepository implements StudyPlanRepository {
   InMemoryStudyPlanRepository._({
     required List<OfficialVocabularyBook> officialBooks,
     required RemoteVocabularyLoader remoteVocabularyLoader,
+    required Duration remoteVocabularyTimeout,
+    required List<VocabularyNotebook> notebooks,
+    required String selectedNotebookId,
     String? currentBookId,
     Set<String>? myBookIds,
   }) : _officialBooks = officialBooks,
        _remoteVocabularyLoader = remoteVocabularyLoader,
+       _remoteVocabularyTimeout = remoteVocabularyTimeout,
+       _notebooks = notebooks,
+       _selectedNotebookId = selectedNotebookId,
        _currentBookId = currentBookId,
        _myBookIds = myBookIds ?? <String>{};
 
   factory InMemoryStudyPlanRepository.seeded({
     RemoteVocabularyLoader? remoteVocabularyLoader,
+    Duration remoteVocabularyTimeout = const Duration(seconds: 8),
   }) {
     return InMemoryStudyPlanRepository._(
       officialBooks: List<OfficialVocabularyBook>.from(_seedBooks),
       remoteVocabularyLoader:
           remoteVocabularyLoader ?? InMemoryStudyPlanRepository._loadRemoteText,
+      remoteVocabularyTimeout: remoteVocabularyTimeout,
+      notebooks: <VocabularyNotebook>[
+        const VocabularyNotebook(
+          id: 'my-vocabulary',
+          name: '我的词汇',
+          description: '默认生词本',
+          items: <VocabularyNotebookWord>[],
+          isDefault: true,
+        ),
+      ],
+      selectedNotebookId: 'my-vocabulary',
     );
   }
 
   final List<OfficialVocabularyBook> _officialBooks;
   final RemoteVocabularyLoader _remoteVocabularyLoader;
+  final Duration _remoteVocabularyTimeout;
+  final List<VocabularyNotebook> _notebooks;
+  String _selectedNotebookId;
   final Set<String> _myBookIds;
   String? _currentBookId;
 
@@ -44,6 +70,8 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
     return StudyPlanOverview(
       currentBook: currentBook,
       myBooks: myBooks,
+      notebooks: List<VocabularyNotebook>.unmodifiable(_notebooks),
+      selectedNotebookId: _selectedNotebookId,
       newCount: currentBook == null ? 0 : 20,
       reviewCount: 0,
       masteredCount: 0,
@@ -65,11 +93,164 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
     }
 
     if (book.isRemote && book.entries.isEmpty) {
-      await _loadRemoteBook(book);
+      throw StateError('词汇表尚未下载');
     }
 
     _myBookIds.add(bookId);
     _currentBookId = bookId;
+  }
+
+  @override
+  Future<void> downloadBook(
+    String bookId, {
+    VocabularyDownloadProgressCallback? onProgress,
+  }) async {
+    final book = _bookById(bookId);
+    if (book == null) {
+      throw ArgumentError.value(bookId, 'bookId', 'Unknown vocabulary book');
+    }
+    if (!book.isRemote || book.entries.isNotEmpty) {
+      _myBookIds.add(bookId);
+      return;
+    }
+
+    await _loadRemoteBook(book, onProgress: onProgress);
+    _myBookIds.add(bookId);
+  }
+
+  @override
+  Future<void> selectNotebook(String notebookId) async {
+    final exists = _notebooks.any((notebook) => notebook.id == notebookId);
+    if (!exists) {
+      throw ArgumentError.value(
+        notebookId,
+        'notebookId',
+        'Unknown vocabulary notebook',
+      );
+    }
+    _selectedNotebookId = notebookId;
+  }
+
+  @override
+  Future<void> createNotebook({
+    required String name,
+    String description = '',
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Notebook name is required');
+    }
+    final id = 'notebook-${DateTime.now().microsecondsSinceEpoch}';
+    _notebooks.add(
+      VocabularyNotebook(
+        id: id,
+        name: trimmedName,
+        description: description.trim(),
+        items: const <VocabularyNotebookWord>[],
+      ),
+    );
+    _selectedNotebookId = id;
+  }
+
+  @override
+  Future<void> updateNotebook({
+    required String notebookId,
+    required String name,
+    String description = '',
+  }) async {
+    final index = _notebooks.indexWhere(
+      (notebook) => notebook.id == notebookId,
+    );
+    if (index < 0) {
+      throw ArgumentError.value(
+        notebookId,
+        'notebookId',
+        'Unknown vocabulary notebook',
+      );
+    }
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Notebook name is required');
+    }
+    final current = _notebooks[index];
+    _notebooks[index] = VocabularyNotebook(
+      id: current.id,
+      name: trimmedName,
+      description: description.trim(),
+      items: current.items,
+      isDefault: current.isDefault,
+    );
+  }
+
+  @override
+  Future<void> deleteNotebook(String notebookId) async {
+    final index = _notebooks.indexWhere(
+      (notebook) => notebook.id == notebookId,
+    );
+    if (index < 0) {
+      throw ArgumentError.value(
+        notebookId,
+        'notebookId',
+        'Unknown vocabulary notebook',
+      );
+    }
+    final current = _notebooks[index];
+    if (current.isDefault) {
+      throw StateError('默认生词本不可删除');
+    }
+    _notebooks.removeAt(index);
+    if (_selectedNotebookId == notebookId && _notebooks.isNotEmpty) {
+      _selectedNotebookId = _notebooks.first.id;
+    }
+  }
+
+  @override
+  Future<void> importWordsToNotebook({
+    required String notebookId,
+    required List<String> words,
+  }) async {
+    final index = _notebooks.indexWhere(
+      (notebook) => notebook.id == notebookId,
+    );
+    if (index < 0) {
+      throw ArgumentError.value(
+        notebookId,
+        'notebookId',
+        'Unknown vocabulary notebook',
+      );
+    }
+
+    final existing = _notebooks[index];
+    final mergedItems = <VocabularyNotebookWord>[];
+    final dedupe = <String>{};
+
+    for (final item in existing.items) {
+      final normalized = item.word.trim().toLowerCase();
+      if (normalized.isEmpty || !dedupe.add(normalized)) {
+        continue;
+      }
+      mergedItems.add(item);
+    }
+
+    for (final rawWord in words) {
+      final trimmed = rawWord.trim();
+      final normalized = trimmed.toLowerCase();
+      if (trimmed.isEmpty || !dedupe.add(normalized)) {
+        continue;
+      }
+      mergedItems.add(
+        VocabularyNotebookWord(word: trimmed, addedAt: DateTime.now().toUtc()),
+      );
+    }
+
+    _notebooks[index] = VocabularyNotebook(
+      id: existing.id,
+      name: existing.name,
+      description: existing.description,
+      items: List<VocabularyNotebookWord>.unmodifiable(mergedItems),
+      isDefault: existing.isDefault,
+    );
+    _selectedNotebookId = notebookId;
   }
 
   OfficialVocabularyBook? _bookById(String? id) {
@@ -86,13 +267,19 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
     return null;
   }
 
-  Future<void> _loadRemoteBook(OfficialVocabularyBook book) async {
+  Future<void> _loadRemoteBook(
+    OfficialVocabularyBook book, {
+    VocabularyDownloadProgressCallback? onProgress,
+  }) async {
     final sourceUrl = book.sourceUrl;
     if (sourceUrl == null) {
       return;
     }
 
-    final rawText = await _loadRemoteTextWithFallback(Uri.parse(sourceUrl));
+    final rawText = await _loadRemoteTextWithFallback(
+      Uri.parse(sourceUrl),
+      onProgress: onProgress,
+    );
     final entries = _parseRemoteEntries(book.id, rawText);
     if (entries.isEmpty) {
       throw StateError('词汇表内容为空');
@@ -109,13 +296,25 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
     );
   }
 
-  Future<String> _loadRemoteTextWithFallback(Uri uri) async {
+  Future<String> _loadRemoteTextWithFallback(
+    Uri uri, {
+    VocabularyDownloadProgressCallback? onProgress,
+  }) async {
     final candidates = <Uri>[uri, ..._buildFallbackUris(uri)];
     Object? lastError;
 
     for (final candidate in candidates) {
       try {
-        return await _remoteVocabularyLoader(candidate);
+        onProgress?.call(0, null);
+        return await _remoteVocabularyLoader(
+          candidate,
+          onProgress: onProgress,
+        ).timeout(
+          _remoteVocabularyTimeout,
+          onTimeout: () {
+            throw TimeoutException('词汇表下载超时');
+          },
+        );
       } catch (error) {
         lastError = error;
       }
@@ -129,6 +328,17 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
   }
 
   static List<Uri> _buildFallbackUris(Uri uri) {
+    if (uri.host == 'shawyerpeng.cn' &&
+        uri.path.endsWith('CET_4+6_edited.txt')) {
+      final raw = Uri.parse(
+        'https://raw.githubusercontent.com/mahavivo/english-wordlists/refs/heads/master/CET_4%2B6_edited.txt',
+      );
+      final api = _buildGitHubContentsApiUri(raw);
+      return <Uri>[
+        raw,
+        if (api != null) api,
+      ];
+    }
     final githubApiUri = _buildGitHubContentsApiUri(uri);
     if (githubApiUri == null) {
       return const <Uri>[];
@@ -200,7 +410,10 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
     return List<WordEntry>.unmodifiable(entries);
   }
 
-  static Future<String> _loadRemoteText(Uri uri) async {
+  static Future<String> _loadRemoteText(
+    Uri uri, {
+    VocabularyDownloadProgressCallback? onProgress,
+  }) async {
     final client = HttpClient();
     try {
       final request = await client.getUrl(uri);
@@ -212,7 +425,19 @@ class InMemoryStudyPlanRepository implements StudyPlanRepository {
         );
       }
 
-      return response.transform(utf8.decoder).join();
+      final totalBytes = response.contentLength > 0
+          ? response.contentLength
+          : null;
+      final buffer = StringBuffer();
+      var receivedBytes = 0;
+
+      await for (final chunk in response) {
+        receivedBytes += chunk.length;
+        buffer.write(utf8.decode(chunk, allowMalformed: true));
+        onProgress?.call(receivedBytes, totalBytes);
+      }
+
+      return buffer.toString();
     } finally {
       client.close(force: true);
     }
@@ -247,7 +472,8 @@ const List<OfficialVocabularyBook> _seedBooks = <OfficialVocabularyBook>[
     coverKey: 'mint',
     entries: <WordEntry>[],
     sourceUrl:
-        'https://raw.githubusercontent.com/mahavivo/english-wordlists/refs/heads/master/CET_4%2B6_edited.txt',
+        // 'https://raw.githubusercontent.com/mahavivo/english-wordlists/refs/heads/master/CET_4%2B6_edited.txt',
+        'https://shawyerpeng.cn/CET_4+6_edited.txt',
   ),
   OfficialVocabularyBook(
     id: 'cet4-core',

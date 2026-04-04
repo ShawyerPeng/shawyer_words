@@ -7,10 +7,12 @@ import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repo
 import 'package:shawyer_words/features/study_plan/presentation/vocabulary_book_picker_page.dart';
 
 void main() {
-  testWidgets('picker shows built-in CET 4+6 remote book', (tester) async {
+  testWidgets('picker defaults to 我的 tab and can switch to CET 4+6', (
+    tester,
+  ) async {
     final controller = StudyPlanController(
       repository: InMemoryStudyPlanRepository.seeded(
-        remoteVocabularyLoader: (uri) async => 'alpha\nbeta\n',
+        remoteVocabularyLoader: (uri, {onProgress}) async => 'alpha\nbeta\n',
       ),
     );
 
@@ -19,16 +21,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('我的'), findsOneWidget);
+    expect(find.textContaining('我的词汇'), findsOneWidget);
+    expect(find.text('CET 4+6'), findsNothing);
+
+    await tester.tap(find.text('四六级'));
+    await tester.pumpAndSettle();
+
     expect(find.text('CET 4+6'), findsOneWidget);
   });
 
   testWidgets(
-    'picker shows importing status bar while remote vocabulary is loading',
+    'picker shows download button and inline progress while remote vocabulary is loading',
     (tester) async {
       final completer = Completer<String>();
       final controller = StudyPlanController(
         repository: InMemoryStudyPlanRepository.seeded(
-          remoteVocabularyLoader: (uri) => completer.future,
+          remoteVocabularyLoader: (uri, {onProgress}) {
+            onProgress?.call(25, 100);
+            return completer.future;
+          },
         ),
       );
 
@@ -37,22 +49,52 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('CET 4+6'));
+      await tester.tap(find.text('四六级'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('download-cet46-remote')));
       await tester.pump();
 
-      expect(find.text('正在导入词汇表...'), findsOneWidget);
+      expect(find.text('已下载 25%'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
       completer.complete('alpha\nbeta\n');
       await tester.pumpAndSettle();
+
+      expect(find.text('已下载'), findsWidgets);
     },
   );
 
-  testWidgets('picker shows failure status bar when remote import fails', (
+  testWidgets('picker does not download when tapping remote item title', (
     tester,
   ) async {
     final controller = StudyPlanController(
       repository: InMemoryStudyPlanRepository.seeded(
-        remoteVocabularyLoader: (uri) async {
+        remoteVocabularyLoader: (uri, {onProgress}) async => 'alpha\nbeta\n',
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: VocabularyBookPickerPage(controller: controller)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('四六级'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('CET 4+6'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('下载'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+  });
+
+  testWidgets('picker shows inline failure when remote download fails', (
+    tester,
+  ) async {
+    final controller = StudyPlanController(
+      repository: InMemoryStudyPlanRepository.seeded(
+        remoteVocabularyLoader: (uri, {onProgress}) async {
           throw Exception('download failed');
         },
       ),
@@ -63,9 +105,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('CET 4+6'));
+    await tester.tap(find.text('四六级'));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const ValueKey('download-cet46-remote')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
     expect(find.textContaining('download failed'), findsOneWidget);
+    expect(find.text('重试'), findsOneWidget);
   });
 }

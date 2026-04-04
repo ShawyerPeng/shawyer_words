@@ -4,6 +4,11 @@ import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/application/study_session_controller.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study/presentation/study_session_page.dart';
+import 'package:shawyer_words/features/study_plan/domain/study_task_source.dart';
+import 'package:shawyer_words/features/study_srs/domain/fsrs_models.dart';
+import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
+import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
+import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 
 void main() {
   testWidgets(
@@ -11,6 +16,10 @@ void main() {
     (tester) async {
       final navigatorKey = GlobalKey<NavigatorState>();
       final studyRepository = _RecordingStudyRepository();
+      final fsrsRepository = _FakeFsrsRepository();
+      final wordKnowledgeRepository = _FakeWordKnowledgeRepository(
+        records: <String, WordKnowledgeRecord>{},
+      );
       final controller = StudySessionController(
         entries: const [
           WordEntry(
@@ -32,6 +41,8 @@ void main() {
           ),
         ],
         studyRepository: studyRepository,
+        fsrsRepository: fsrsRepository,
+        wordKnowledgeRepository: wordKnowledgeRepository,
       );
 
       await tester.pumpWidget(
@@ -50,6 +61,9 @@ void main() {
 
       expect(find.text('贵族统治；贵族阶层'), findsNothing);
       expect(find.text('aristocracy'), findsOneWidget);
+      expect(find.text('标记熟悉'), findsOneWidget);
+      expect(find.text('忘记'), findsOneWidget);
+      expect(find.text('模糊'), findsOneWidget);
       expect(find.text('查看完整释义'), findsNothing);
 
       await tester.tap(find.text('释义'));
@@ -58,6 +72,7 @@ void main() {
       expect(find.text('贵族统治；贵族阶层'), findsOneWidget);
       expect(find.text('查看完整释义'), findsOneWidget);
 
+      await tester.ensureVisible(find.text('查看完整释义'));
       await tester.tap(find.text('查看完整释义'));
       await tester.pumpAndSettle();
 
@@ -75,6 +90,97 @@ void main() {
       expect(find.text('轻快的；敏捷的'), findsNothing);
     },
   );
+
+  testWidgets('mark mastered from top action records mastered summary', (
+    tester,
+  ) async {
+    final controller = StudySessionController(
+      entries: const [
+        WordEntry(
+          id: '1',
+          word: 'aristocracy',
+          rawContent: '<p>aristocracy</p>',
+        ),
+      ],
+      studyRepository: _RecordingStudyRepository(),
+      fsrsRepository: _FakeFsrsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(
+        records: <String, WordKnowledgeRecord>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StudySessionPage(
+          controller: controller,
+          wordDetailPageBuilder: (word, initialEntry) =>
+              const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('标记熟悉'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已掌握 1 个'), findsOneWidget);
+    expect(find.text('认识 0 个'), findsOneWidget);
+    expect(find.text('模糊 0 个'), findsOneWidget);
+    expect(find.text('忘记 0 个'), findsOneWidget);
+  });
+
+  testWidgets('shows current task source badge for new review and probe', (
+    tester,
+  ) async {
+    final controller = StudySessionController(
+      entries: const [
+        WordEntry(id: '1', word: 'fresh-word', rawContent: '<p>fresh-word</p>'),
+        WordEntry(
+          id: '2',
+          word: 'review-word',
+          rawContent: '<p>review-word</p>',
+        ),
+        WordEntry(id: '3', word: 'probe-word', rawContent: '<p>probe-word</p>'),
+      ],
+      studyRepository: _RecordingStudyRepository(),
+      fsrsRepository: _FakeFsrsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(
+        records: <String, WordKnowledgeRecord>{},
+      ),
+      entrySourcesByWord: const <String, StudyTaskSource>{
+        'fresh-word': StudyTaskSource.newWord,
+        'review-word': StudyTaskSource.mustReview,
+        'probe-word': StudyTaskSource.probeWord,
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StudySessionPage(
+          controller: controller,
+          wordDetailPageBuilder: (word, initialEntry) =>
+              const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    expect(find.text('新学'), findsOneWidget);
+    expect(find.text('复习'), findsNothing);
+    expect(find.text('抽查'), findsNothing);
+
+    await tester.tap(find.text('认识'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('复习'), findsOneWidget);
+    expect(find.text('新学'), findsNothing);
+    expect(find.text('抽查'), findsNothing);
+
+    await tester.tap(find.text('认识'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('抽查'), findsOneWidget);
+    expect(find.text('新学'), findsNothing);
+    expect(find.text('复习'), findsNothing);
+  });
 }
 
 class _RecordingStudyRepository implements StudyRepository {
@@ -88,5 +194,110 @@ class _RecordingStudyRepository implements StudyRepository {
   }) async {
     savedEntryIds.add(entryId);
     savedDecisions.add(decision);
+  }
+
+  @override
+  Future<List<StudyDecisionRecord>> loadDecisionRecords() async {
+    return const <StudyDecisionRecord>[];
+  }
+}
+
+class _FakeFsrsRepository implements FsrsRepository {
+  @override
+  Future<void> addReviewLog(FsrsReviewLog log) async {}
+
+  @override
+  Future<void> clearAll() async {}
+
+  @override
+  Future<FsrsCard?> getByWord(String word) async => null;
+
+  @override
+  Future<List<FsrsCard>> loadAll() async => const <FsrsCard>[];
+
+  @override
+  Future<Map<String, FsrsReviewLog>> loadLatestReviewLogsByWord() async {
+    return const <String, FsrsReviewLog>{};
+  }
+
+  @override
+  Future<void> saveReview(FsrsRecordLogItem item) async {}
+
+  @override
+  Future<void> saveCard(FsrsCard card) async {}
+}
+
+class _FakeWordKnowledgeRepository implements WordKnowledgeRepository {
+  _FakeWordKnowledgeRepository({
+    required Map<String, WordKnowledgeRecord> records,
+  }) : _records = records;
+
+  final Map<String, WordKnowledgeRecord> _records;
+
+  @override
+  Future<void> clearAll() async {
+    _records.clear();
+  }
+
+  @override
+  Future<WordKnowledgeRecord?> getByWord(String word) async {
+    final normalized = WordKnowledgeRecord.normalizeWord(word);
+    return _records[normalized];
+  }
+
+  @override
+  Future<List<WordKnowledgeRecord>> loadAll() async => _records.values.toList();
+
+  @override
+  Future<void> markKnown(
+    String word, {
+    required bool skipConfirmNextTime,
+  }) async {
+    final normalized = WordKnowledgeRecord.normalizeWord(word);
+    final current =
+        _records[normalized] ?? WordKnowledgeRecord.initial(normalized);
+    _records[normalized] = WordKnowledgeRecord(
+      word: normalized,
+      isFavorite: current.isFavorite,
+      isKnown: true,
+      note: current.note,
+      skipKnownConfirm: skipConfirmNextTime,
+      updatedAt: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<void> save(WordKnowledgeRecord record) async {
+    _records[record.word] = record;
+  }
+
+  @override
+  Future<void> saveNote(String word, String note) async {
+    final normalized = WordKnowledgeRecord.normalizeWord(word);
+    final current =
+        _records[normalized] ?? WordKnowledgeRecord.initial(normalized);
+    _records[normalized] = WordKnowledgeRecord(
+      word: normalized,
+      isFavorite: current.isFavorite,
+      isKnown: current.isKnown,
+      note: note,
+      skipKnownConfirm: current.skipKnownConfirm,
+      updatedAt: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<void> toggleFavorite(String word) async {
+    final normalized = WordKnowledgeRecord.normalizeWord(word);
+    final current =
+        _records[normalized] ?? WordKnowledgeRecord.initial(normalized);
+    _records[normalized] = WordKnowledgeRecord(
+      word: normalized,
+      isFavorite: !current.isFavorite,
+      isKnown: current.isKnown,
+      note: current.note,
+      skipKnownConfirm: current.skipKnownConfirm,
+      updatedAt: DateTime.now().toUtc(),
+    );
   }
 }

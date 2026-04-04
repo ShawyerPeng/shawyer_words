@@ -15,6 +15,7 @@ import 'package:shawyer_words/features/dictionary/domain/dictionary_summary.dart
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
 import 'package:shawyer_words/features/search/data/in_memory_search_history_repository.dart';
+import 'package:shawyer_words/features/search/data/lexdb_word_lookup_repository.dart';
 import 'package:shawyer_words/features/search/domain/word_lookup_repository.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/word_detail/application/word_detail_controller.dart';
@@ -71,10 +72,16 @@ void main() {
       await tester.tap(find.text('nut'));
       await tester.pumpAndSettle();
 
-      expect(find.text('基本'), findsOneWidget);
-      expect(find.text('干果, 坚果; 螺母'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('word-detail-search-shell')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('word-detail-favorite')),
+        findsOneWidget,
+      );
 
-      await tester.pageBack();
+      await tester.tap(find.text('取消').first);
       await tester.pumpAndSettle();
 
       expect(find.text('nut'), findsOneWidget);
@@ -105,6 +112,13 @@ void main() {
         dictionaryRepository: _FakeDictionaryRepository(),
         previewRepository: _FakeDictionaryPreviewRepository(),
         studyRepository: _FakeStudyRepository(),
+      ),
+      searchController: SearchController(
+        lookupRepository: LexDbWordLookupRepository(
+          databasePath: databasePath,
+          databaseFactory: databaseFactory,
+        ),
+        historyRepository: InMemorySearchHistoryRepository(),
       ),
       pickDictionaryFile: () async => null,
       lexDbPath: databasePath,
@@ -277,6 +291,11 @@ class _FakeStudyRepository implements StudyRepository {
     required String entryId,
     required StudyDecisionType decision,
   }) async {}
+
+  @override
+  Future<List<StudyDecisionRecord>> loadDecisionRecords() async {
+    return const <StudyDecisionRecord>[];
+  }
 }
 
 class _FakeWordDetailRepository implements WordDetailRepository {

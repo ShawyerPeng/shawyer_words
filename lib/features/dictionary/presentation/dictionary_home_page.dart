@@ -1168,8 +1168,8 @@ class _ReadyState extends StatelessWidget {
               onDismissed: (direction) {
                 final decision = switch (direction) {
                   DismissDirection.startToEnd => StudyDecisionType.known,
-                  DismissDirection.endToStart => StudyDecisionType.unknown,
-                  _ => StudyDecisionType.unknown,
+                  DismissDirection.endToStart => StudyDecisionType.forgot,
+                  _ => StudyDecisionType.forgot,
                 };
                 controller.recordDecision(decision);
               },

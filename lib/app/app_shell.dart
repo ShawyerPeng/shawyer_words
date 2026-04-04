@@ -11,6 +11,8 @@ import 'package:shawyer_words/features/shared/presentation/placeholder_section_p
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/presentation/study_home_page.dart';
+import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
+import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
 enum _ShellTab { vocabulary, knowledgeBase, learning, me }
@@ -23,6 +25,8 @@ class AppShell extends StatefulWidget {
     required this.pickDictionaryFile,
     required this.searchController,
     required this.settingsController,
+    required this.wordKnowledgeRepository,
+    required this.fsrsRepository,
     required this.studyPlanController,
     required this.studyRepository,
     required this.wordDetailPageBuilder,
@@ -33,6 +37,8 @@ class AppShell extends StatefulWidget {
   final Future<String?> Function() pickDictionaryFile;
   final SearchController searchController;
   final SettingsController settingsController;
+  final WordKnowledgeRepository wordKnowledgeRepository;
+  final FsrsRepository fsrsRepository;
   final StudyPlanController studyPlanController;
   final StudyRepository studyRepository;
   final WordDetailPageBuilder wordDetailPageBuilder;
@@ -67,6 +73,9 @@ class _AppShellState extends State<AppShell> {
     final pages = <Widget>[
       StudyHomePage(
         controller: widget.studyPlanController,
+        settingsController: widget.settingsController,
+        wordKnowledgeRepository: widget.wordKnowledgeRepository,
+        fsrsRepository: widget.fsrsRepository,
         studyRepository: widget.studyRepository,
         wordDetailPageBuilder: widget.wordDetailPageBuilder,
       ),
@@ -78,6 +87,11 @@ class _AppShellState extends State<AppShell> {
       ),
       MePage(
         settingsController: widget.settingsController,
+        studyPlanController: widget.studyPlanController,
+        studyRepository: widget.studyRepository,
+        wordKnowledgeRepository: widget.wordKnowledgeRepository,
+        fsrsRepository: widget.fsrsRepository,
+        wordDetailPageBuilder: widget.wordDetailPageBuilder,
         showCloseButton: false,
         dictionaryLibraryManagementPageBuilder: (_) =>
             DictionaryLibraryManagementPage(

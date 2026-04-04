@@ -10,7 +10,7 @@ void main() {
     test('loads saved settings into ready state', () async {
       final controller = SettingsController(
         repository: _FakeAppSettingsRepository(
-          stored: const AppSettings(
+          stored: const AppSettings.defaults().copyWith(
             myLanguage: 'English',
             appearanceMode: AppAppearanceMode.dark,
             themeName: 'forest',
@@ -19,6 +19,7 @@ void main() {
             autoPlayPronunciation: false,
             showConversationTranslationByDefault: false,
             dailyStudyTarget: 30,
+            studyPlanningMode: StudyPlanningMode.reviewFirst,
             reminderEnabled: true,
             reminderHour: 8,
             reminderMinute: 15,
@@ -33,6 +34,10 @@ void main() {
 
       expect(controller.state.status, SettingsStatus.ready);
       expect(controller.state.settings.themeName, 'forest');
+      expect(
+        controller.state.settings.studyPlanningMode,
+        StudyPlanningMode.reviewFirst,
+      );
       expect(controller.state.settings.reminderHour, 8);
     });
 
@@ -46,6 +51,7 @@ void main() {
       await controller.load();
       await controller.updateAppearance(AppAppearanceMode.dark);
       await controller.updateFontScale(AppFontScale.large);
+      await controller.updateStudyPlanningMode(StudyPlanningMode.sprint);
       await controller.updateReminder(enabled: true, hour: 6, minute: 50);
 
       expect(
@@ -53,6 +59,10 @@ void main() {
         AppAppearanceMode.dark,
       );
       expect(repository.savedSettings.last.fontScale, AppFontScale.large);
+      expect(
+        repository.savedSettings.last.studyPlanningMode,
+        StudyPlanningMode.sprint,
+      );
       expect(repository.savedSettings.last.reminderEnabled, isTrue);
       expect(repository.savedSettings.last.reminderHour, 6);
       expect(repository.savedSettings.last.reminderMinute, 50);

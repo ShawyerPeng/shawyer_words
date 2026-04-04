@@ -36,6 +36,15 @@ void main() {
       expect(find.text('帮助与反馈'), findsOneWidget);
       expect(find.text('词典库管理'), findsOneWidget);
 
+      await tester.tap(find.text('帮助与反馈'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('帮助中心'), findsOneWidget);
+      expect(find.text('常见问题'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('help-center-back')));
+      await tester.pumpAndSettle();
+
       await tester.tap(find.text('词典库管理'));
       await tester.pumpAndSettle();
 
