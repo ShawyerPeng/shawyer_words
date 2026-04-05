@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shawyer_words/features/settings/presentation/general_settings_page.dart';
 
 class MembershipCenterPage extends StatelessWidget {
   const MembershipCenterPage({super.key});
@@ -28,38 +29,18 @@ class SimpleSettingsInfoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    child: InkWell(
-                      onTap: () => Navigator.of(context).pop(),
-                      borderRadius: BorderRadius.circular(24),
-                      child: const SizedBox(
-                        height: 56,
-                        width: 56,
-                        child: Icon(Icons.arrow_back_ios_new_rounded),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
+              SettingsHeader(
+                title: title,
+                onBack: () => Navigator.of(context).pop(),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 14),
               Expanded(
                 child: Container(
                   width: double.infinity,

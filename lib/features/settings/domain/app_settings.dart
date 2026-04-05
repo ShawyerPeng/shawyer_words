@@ -1,3 +1,6 @@
+import 'package:shawyer_words/features/settings/domain/app_language_option.dart';
+import 'package:shawyer_words/features/settings/domain/app_theme_palette.dart';
+
 enum AppAppearanceMode { system, light, dark }
 
 enum AppFontScale { normal, medium, large }
@@ -43,9 +46,9 @@ class AppSettings {
   });
 
   const AppSettings.defaults()
-    : myLanguage = '中文',
+    : myLanguage = 'system',
       appearanceMode = AppAppearanceMode.system,
-      themeName = 'default',
+      themeName = 'gray',
       fontScale = AppFontScale.normal,
       defaultPronunciation = DefaultPronunciation.uk,
       autoPlayPronunciation = true,
@@ -184,11 +187,13 @@ class AppSettings {
 
   factory AppSettings.fromJson(Map<String, Object?> json) {
     return AppSettings(
-      myLanguage: json['my_language'] as String? ?? '中文',
+      myLanguage: appLanguageStoredValue(
+        appLanguageOptionFromStoredValue(json['my_language'] as String?),
+      ),
       appearanceMode: _appearanceModeFromName(
         json['appearance_mode'] as String?,
       ),
-      themeName: json['theme_name'] as String? ?? 'default',
+      themeName: normalizeAppThemeName(json['theme_name'] as String? ?? 'gray'),
       fontScale: _fontScaleFromName(json['font_scale'] as String?),
       defaultPronunciation: _defaultPronunciationFromName(
         json['default_pronunciation'] as String?,

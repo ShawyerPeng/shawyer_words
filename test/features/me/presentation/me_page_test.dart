@@ -10,7 +10,7 @@ import 'package:shawyer_words/features/word_detail/domain/word_knowledge_reposit
 
 void main() {
   testWidgets(
-    'shows all first-level me sections and opens dictionary library management',
+    'shows me showcase cards and retained setting entries, then opens dictionary library management',
     (tester) async {
       final settingsController = SettingsController(
         repository: _FakeAppSettingsRepository(),
@@ -27,16 +27,50 @@ void main() {
         ),
       );
 
-      expect(find.text('词典库管理'), findsOneWidget);
+      expect(find.text('收藏'), findsOneWidget);
+      expect(find.text('录音'), findsOneWidget);
+      expect(find.text('文件'), findsOneWidget);
+      expect(find.text('账号设置'), findsOneWidget);
       expect(find.text('通用设置'), findsOneWidget);
       expect(find.text('学习设置'), findsOneWidget);
-      expect(find.text('数据统计'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('会员中心'), 300);
-      expect(find.text('会员中心'), findsOneWidget);
-      expect(find.text('帮助与反馈'), findsOneWidget);
       expect(find.text('词典库管理'), findsOneWidget);
+      expect(find.text('会员中心'), findsOneWidget);
+      expect(find.text('登录'), findsOneWidget);
 
-      await tester.tap(find.text('帮助与反馈'));
+      final accountTop = tester
+          .getRect(find.byKey(const ValueKey('me-entry-account-settings')))
+          .top;
+      final generalTop = tester
+          .getRect(find.byKey(const ValueKey('me-entry-general-settings')))
+          .top;
+      final learningTop = tester
+          .getRect(find.byKey(const ValueKey('me-entry-learning-settings')))
+          .top;
+      final dictionaryTop = tester
+          .getRect(find.byKey(const ValueKey('me-entry-dictionary-management')))
+          .top;
+
+      expect(accountTop, lessThan(generalTop));
+      expect(generalTop, lessThan(learningTop));
+      expect(learningTop, lessThan(dictionaryTop));
+
+      await tester.scrollUntilVisible(
+        find.text('数据统计'),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('数据统计'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('邀请好友'),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('邀请好友'), findsOneWidget);
+
+      final helpEntry = find.byKey(const ValueKey('me-entry-help-feedback'));
+      await tester.ensureVisible(helpEntry);
+      await tester.pumpAndSettle();
+      await tester.tap(helpEntry, warnIfMissed: false);
       await tester.pumpAndSettle();
 
       expect(find.text('帮助中心'), findsOneWidget);
@@ -45,7 +79,18 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('help-center-back')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('词典库管理'));
+      await tester.tap(find.byKey(const ValueKey('me-entry-account-settings')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('账号设置'), findsWidgets);
+      expect(find.text('管理账号信息、登录方式与同步相关设置。'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.arrow_back_ios_new_rounded).first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const ValueKey('me-entry-dictionary-management')),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('所有词典库'), findsOneWidget);
@@ -79,47 +124,33 @@ void main() {
     expect(padding.bottom, greaterThanOrEqualTo(140));
   });
 
-  testWidgets('keeps visible spacing between login card and first menu tile', (
-    tester,
-  ) async {
-    final settingsController = SettingsController(
-      repository: _FakeAppSettingsRepository(),
-      wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
-    );
-    await settingsController.load();
+  testWidgets(
+    'keeps visible spacing between profile header and showcase cards',
+    (tester) async {
+      final settingsController = SettingsController(
+        repository: _FakeAppSettingsRepository(),
+        wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+      );
+      await settingsController.load();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MePage(
-          settingsController: settingsController,
-          dictionaryLibraryManagementPageBuilder: _buildManagementPage,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MePage(
+            settingsController: settingsController,
+            dictionaryLibraryManagementPageBuilder: _buildManagementPage,
+          ),
         ),
-      ),
-    );
+      );
 
-    final loginCard = find.ancestor(
-      of: find.text('同步学习进度、收藏和搜索历史'),
-      matching: find.byWidgetPredicate((widget) {
-        if (widget is! Container) {
-          return false;
-        }
-        final decoration = widget.decoration;
-        if (decoration is! BoxDecoration) {
-          return false;
-        }
-        return decoration.boxShadow?.isNotEmpty == true;
-      }),
-    );
-    final firstMenuTile = find.ancestor(
-      of: find.text('词典库管理'),
-      matching: find.byType(Material),
-    );
+      final header = find.text('登录');
+      final showcaseCard = find.text('收藏');
 
-    final loginCardBottom = tester.getRect(loginCard.first).bottom;
-    final firstMenuTileTop = tester.getRect(firstMenuTile.first).top;
+      final headerBottom = tester.getRect(header).bottom;
+      final showcaseTop = tester.getRect(showcaseCard).top;
 
-    expect(firstMenuTileTop - loginCardBottom, greaterThanOrEqualTo(14));
-  });
+      expect(showcaseTop - headerBottom, greaterThanOrEqualTo(24));
+    },
+  );
 }
 
 Widget _buildManagementPage(BuildContext context) {

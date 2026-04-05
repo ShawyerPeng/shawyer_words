@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
 import 'package:shawyer_words/features/settings/domain/study_statistics.dart';
+import 'package:shawyer_words/features/settings/presentation/general_settings_page.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_srs/domain/fsrs_models.dart';
@@ -28,7 +29,7 @@ class StudyStatisticsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: FutureBuilder<_StudyStatisticsViewModel>(
           future: _loadViewModel(),
@@ -49,37 +50,18 @@ class StudyStatisticsPage extends StatelessWidget {
             final stats = model.stats;
 
             return ListView(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               children: [
-                Row(
-                  children: [
-                    Material(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      child: InkWell(
-                        onTap: () => Navigator.of(context).pop(),
-                        borderRadius: BorderRadius.circular(24),
-                        child: const SizedBox(
-                          height: 56,
-                          width: 56,
-                          child: Icon(Icons.arrow_back_ios_new_rounded),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      '数据统计',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ],
+                SettingsHeader(
+                  title: '数据统计',
+                  onBack: () => Navigator.of(context).pop(),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Text(
                   '跟踪每日学习记录，每一点努力都算数',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: const Color(0xFF667085),
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
                 const SizedBox(height: 18),

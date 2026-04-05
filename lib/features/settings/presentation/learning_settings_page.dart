@@ -32,7 +32,7 @@ class LearningSettingsPage extends StatelessWidget {
       builder: (context, _) {
         final settings = controller.state.settings;
         return Scaffold(
-          backgroundColor: const Color(0xFFF3F5FA),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
@@ -75,23 +75,22 @@ class LearningSettingsPage extends StatelessWidget {
                       title: '学习计划',
                       onTap:
                           studyPlanController == null ||
-                                  wordKnowledgeRepository == null ||
-                                  fsrsRepository == null ||
-                                  wordDetailPageBuilder == null
-                              ? null
-                              : () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => StudyPlanSettingsPage(
-                                      settingsController: controller,
-                                      studyPlanController: studyPlanController!,
-                                      wordKnowledgeRepository:
-                                          wordKnowledgeRepository!,
-                                      fsrsRepository: fsrsRepository!,
-                                      wordDetailPageBuilder:
-                                          wordDetailPageBuilder!,
-                                    ),
-                                  ),
+                              wordKnowledgeRepository == null ||
+                              fsrsRepository == null ||
+                              wordDetailPageBuilder == null
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => StudyPlanSettingsPage(
+                                  settingsController: controller,
+                                  studyPlanController: studyPlanController!,
+                                  wordKnowledgeRepository:
+                                      wordKnowledgeRepository!,
+                                  fsrsRepository: fsrsRepository!,
+                                  wordDetailPageBuilder: wordDetailPageBuilder!,
                                 ),
+                              ),
+                            ),
                     ),
                     SettingsActionTile(
                       title: '每日学习计划',
@@ -171,13 +170,13 @@ class LearningSettingsPage extends StatelessWidget {
                         onSelected: controller.updateDefaultPronunciation,
                       ),
                     ),
-                    SwitchListTile(
-                      title: const Text('自动发音'),
+                    _CompactSwitchTile(
+                      title: '自动发音',
                       value: settings.autoPlayPronunciation,
                       onChanged: controller.updateAutoPlayPronunciation,
                     ),
-                    SwitchListTile(
-                      title: const Text('默认显示对话翻译'),
+                    _CompactSwitchTile(
+                      title: '默认显示对话翻译',
                       value: settings.showConversationTranslationByDefault,
                       onChanged: controller.updateShowConversationTranslation,
                     ),
@@ -232,5 +231,55 @@ class LearningSettingsPage extends StatelessWidget {
         context,
       ).showSnackBar(const SnackBar(content: Text('学习进度已清除')));
     }
+  }
+}
+
+class _CompactSwitchTile extends StatelessWidget {
+  const _CompactSwitchTile({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF2B1912),
+                  ),
+                ),
+              ),
+              Transform.scale(
+                scale: 0.82,
+                child: Switch(
+                  value: value,
+                  onChanged: onChanged,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

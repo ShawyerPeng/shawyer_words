@@ -49,7 +49,17 @@ void main() {
 
       final actual = await repository.load();
 
-      expect(actual, expected);
+      expect(actual, expected.copyWith(themeName: 'green'));
+    });
+
+    test('normalizes legacy default theme from stored json', () async {
+      final settingsFile = File('${tempDirectory.path}/app_settings.json');
+      await settingsFile.parent.create(recursive: true);
+      await settingsFile.writeAsString('{"theme_name":"default"}');
+
+      final actual = await repository.load();
+
+      expect(actual.themeName, 'gray');
     });
   });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:shawyer_words/features/settings/domain/app_language_option.dart';
 import 'package:shawyer_words/features/settings/domain/app_settings.dart';
 import 'package:shawyer_words/features/settings/domain/app_settings_repository.dart';
+import 'package:shawyer_words/features/settings/domain/app_theme_palette.dart';
 import 'package:shawyer_words/features/settings/domain/study_statistics.dart';
 import 'package:shawyer_words/features/settings/domain/system_settings_opener.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
@@ -67,7 +69,10 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final settings = await _repository.load();
+      final loadedSettings = await _repository.load();
+      final settings = loadedSettings.copyWith(
+        themeName: normalizeAppThemeName(loadedSettings.themeName),
+      );
       _state = _state.copyWith(
         status: SettingsStatus.ready,
         settings: settings,
@@ -105,12 +110,25 @@ class SettingsController extends ChangeNotifier {
     );
   }
 
-  Future<void> updateMyLanguage(String language) {
-    return _save(_state.settings.copyWith(myLanguage: language));
+  Future<void> updateReminderEnabled(bool enabled) {
+    return _save(_state.settings.copyWith(reminderEnabled: enabled));
+  }
+
+  Future<void> enableReminderAndOpenNotificationSettings() async {
+    await updateReminderEnabled(true);
+    await _systemSettingsOpener.openNotificationSettings();
+  }
+
+  Future<void> updateMyLanguage(AppLanguageOption language) {
+    return _save(
+      _state.settings.copyWith(myLanguage: appLanguageStoredValue(language)),
+    );
   }
 
   Future<void> updateThemeName(String themeName) {
-    return _save(_state.settings.copyWith(themeName: themeName));
+    return _save(
+      _state.settings.copyWith(themeName: normalizeAppThemeName(themeName)),
+    );
   }
 
   Future<void> updateDefaultPronunciation(DefaultPronunciation pronunciation) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shawyer_words/features/settings/presentation/general_settings_page.dart';
 
 class HelpCenterPage extends StatefulWidget {
   const HelpCenterPage({super.key});
@@ -28,13 +29,17 @@ class _HelpCenterPageState extends State<HelpCenterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5F9),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
           children: [
-            _buildHeader(context),
-            const SizedBox(height: 26),
+            SettingsHeader(
+              title: '帮助中心',
+              onBack: () => Navigator.of(context).pop(),
+              backButtonKey: const ValueKey('help-center-back'),
+            ),
+            const SizedBox(height: 18),
             const Text(
               '常见问题',
               style: TextStyle(
@@ -76,40 +81,6 @@ class _HelpCenterPageState extends State<HelpCenterPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                key: const ValueKey('help-center-back'),
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => Navigator.of(context).pop(),
-                child: const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Icon(Icons.arrow_back_ios_new_rounded, size: 24),
-                ),
-              ),
-            ),
-          ),
-          const Text(
-            '帮助中心',
-            style: TextStyle(
-              color: Color(0xFF121826),
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _FaqItem {
@@ -185,11 +156,7 @@ class _FaqRow extends StatelessWidget {
         if (!isLast)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: Color(0xFFF0F2F5),
-            ),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFF0F2F5)),
           ),
       ],
     );

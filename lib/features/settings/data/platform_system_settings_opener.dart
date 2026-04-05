@@ -8,4 +8,9 @@ final class PlatformSystemSettingsOpener implements SystemSettingsOpener {
   Future<void> openLanguageSettings() {
     return AppSettings.openAppSettings(type: AppSettingsType.settings);
   }
+
+  @override
+  Future<void> openNotificationSettings() {
+    return AppSettings.openAppSettings(type: AppSettingsType.notification);
+  }
 }

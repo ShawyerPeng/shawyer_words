@@ -27,6 +27,7 @@ import 'package:shawyer_words/features/settings/application/settings_controller.
 import 'package:shawyer_words/features/settings/data/file_system_app_settings_repository.dart';
 import 'package:shawyer_words/features/settings/data/platform_system_settings_opener.dart';
 import 'package:shawyer_words/features/settings/domain/app_settings.dart';
+import 'package:shawyer_words/features/settings/domain/app_theme_palette.dart';
 import 'package:shawyer_words/features/study/data/in_memory_study_repository.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
@@ -75,7 +76,9 @@ class ShawyerWordsApp extends StatelessWidget {
     );
     final resolvedWordKnowledgeRepository =
         wordKnowledgeRepository ??
-        SqliteWordKnowledgeRepository(databasePathResolver: _wordKnowledgeDatabasePath);
+        SqliteWordKnowledgeRepository(
+          databasePathResolver: _wordKnowledgeDatabasePath,
+        );
     final resolvedFsrsRepository =
         fsrsRepository ??
         SqliteFsrsRepository(databasePathResolver: _wordKnowledgeDatabasePath);
@@ -240,11 +243,7 @@ class ShawyerWordsApp extends StatelessWidget {
 }
 
 ThemeData _buildTheme(AppSettings settings, {required Brightness brightness}) {
-  final seedColor = switch (settings.themeName) {
-    'forest' => const Color(0xFF0A9B6B),
-    'sunrise' => const Color(0xFFF28C3A),
-    _ => const Color(0xFF0BB58A),
-  };
+  final palette = appThemePaletteFor(settings.themeName);
   final fontScale = switch (settings.fontScale) {
     AppFontScale.normal => 1.0,
     AppFontScale.medium => 1.08,
@@ -253,13 +252,13 @@ ThemeData _buildTheme(AppSettings settings, {required Brightness brightness}) {
 
   return ThemeData(
     colorScheme: ColorScheme.fromSeed(
-      seedColor: seedColor,
+      seedColor: palette.seedColor,
       brightness: brightness,
     ),
     fontFamily: 'Avenir Next',
     scaffoldBackgroundColor: brightness == Brightness.dark
         ? const Color(0xFF0F1117)
-        : const Color(0xFFF3F5FA),
+        : palette.lightBackground,
     textTheme: _scaledTextTheme(
       ThemeData(brightness: brightness).textTheme,
       factor: fontScale,
