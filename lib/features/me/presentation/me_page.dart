@@ -129,6 +129,7 @@ class MePage extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 14),
             _MenuTile(
               icon: Icons.menu_book_outlined,
               title: '词典库管理',

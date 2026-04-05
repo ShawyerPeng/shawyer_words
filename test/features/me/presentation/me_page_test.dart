@@ -78,6 +78,48 @@ void main() {
     final padding = listView.padding! as EdgeInsets;
     expect(padding.bottom, greaterThanOrEqualTo(140));
   });
+
+  testWidgets('keeps visible spacing between login card and first menu tile', (
+    tester,
+  ) async {
+    final settingsController = SettingsController(
+      repository: _FakeAppSettingsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+    );
+    await settingsController.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MePage(
+          settingsController: settingsController,
+          dictionaryLibraryManagementPageBuilder: _buildManagementPage,
+        ),
+      ),
+    );
+
+    final loginCard = find.ancestor(
+      of: find.text('同步学习进度、收藏和搜索历史'),
+      matching: find.byWidgetPredicate((widget) {
+        if (widget is! Container) {
+          return false;
+        }
+        final decoration = widget.decoration;
+        if (decoration is! BoxDecoration) {
+          return false;
+        }
+        return decoration.boxShadow?.isNotEmpty == true;
+      }),
+    );
+    final firstMenuTile = find.ancestor(
+      of: find.text('词典库管理'),
+      matching: find.byType(Material),
+    );
+
+    final loginCardBottom = tester.getRect(loginCard.first).bottom;
+    final firstMenuTileTop = tester.getRect(firstMenuTile.first).top;
+
+    expect(firstMenuTileTop - loginCardBottom, greaterThanOrEqualTo(14));
+  });
 }
 
 Widget _buildManagementPage(BuildContext context) {
