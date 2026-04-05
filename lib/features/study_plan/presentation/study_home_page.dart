@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
+import 'package:shawyer_words/features/settings/presentation/study_plan_settings_page.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study/presentation/study_session_page.dart';
 import 'package:shawyer_words/features/study_plan/application/daily_task_planner.dart';
@@ -201,47 +202,72 @@ class _StudyHomeContent extends StatelessWidget {
     final plannedReviewCount = dailyPlanSummary == null
         ? dailyReviewCount
         : dailyPlanSummary!.reviewCount + dailyPlanSummary!.probeCount;
+    final currentBook = state.currentBook;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 10, 24, 140),
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 140),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _StudyTopBar(
-            onBack: () {
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
-            },
-          ),
-          const SizedBox(height: 14),
+          const _StudyHeroBanner(),
           _StudyHeaderCard(
-            currentBook: state.currentBook,
-            newCount: plannedNewCount,
-            reviewCount: plannedReviewCount,
+            currentBook: currentBook,
             masteredCount: state.masteredCount,
             remainingCount: state.remainingCount,
-            onStart: state.currentBook == null
-                ? null
-                : () => _openStudySession(context, state.currentBook!),
             onChangeBook: () => _openBookPicker(context),
-            onOpenWordList: state.currentBook == null
+            onOpenWordList: currentBook == null
                 ? null
-                : () => _openWordListPage(context, state.currentBook!),
+                : () => _openWordListPage(context, currentBook),
+            onOpenTaskSettings: currentBook == null
+                ? null
+                : () => _openStudyPlanPage(context),
           ),
-          if (state.currentBook != null) ...[
-            const SizedBox(height: 14),
+          if (currentBook != null) ...[
+            const SizedBox(height: 16),
             _DailyTaskSettingsCard(
               dailyNewCount: dailyNewCount,
               dailyReviewCount: dailyReviewCount,
               dailyReviewRatio: dailyReviewRatio,
+              plannedNewCount: plannedNewCount,
+              plannedReviewCount: plannedReviewCount,
               dailyPlanSummary: dailyPlanSummary,
-              onTap: () => _openTaskSettingsPage(context, state.currentBook!),
+              onOpenSettings: () => _openTaskSettingsPage(context, currentBook),
+              onStartNew: () => _openStudySessionForSources(
+                context,
+                currentBook,
+                sources: const <StudyTaskSource>{StudyTaskSource.newWord},
+                emptyMessage: '暂无新学任务',
+              ),
+              onStartReview: () => _openStudySessionForSources(
+                context,
+                currentBook,
+                sources: const <StudyTaskSource>{
+                  StudyTaskSource.mustReview,
+                  StudyTaskSource.normalReview,
+                  StudyTaskSource.probeWord,
+                  StudyTaskSource.newWord,
+                },
+                emptyMessage: '暂无复习任务',
+              ),
             ),
+            const SizedBox(height: 16),
+            _FreePracticeCard(
+              hasCurrentBook: true,
+              onListPractice: () => _openWordListPage(context, currentBook),
+              onMemoryAidVideo: () => _showPracticeComingSoon(context, '助记视频'),
+              onPortableListening: () =>
+                  _showPracticeComingSoon(context, '随身听'),
+              onPhonics: () => _showPracticeComingSoon(context, '自然拼读'),
+              onWordDictation: () => _showPracticeComingSoon(context, '单词听写'),
+              onListeningDrill: () => _showPracticeComingSoon(context, '听力训练'),
+              onShadowing: () => _showPracticeComingSoon(context, '跟读对比'),
+              onDefinitionPractice: () =>
+                  _showPracticeComingSoon(context, '释义巩固'),
+              onSpellingPractice: () =>
+                  _showPracticeComingSoon(context, '拼写练习'),
+            ),
+            const SizedBox(height: 20),
           ],
-          const SizedBox(height: 24),
-          _WeekProgressCard(days: state.weekDays),
-          const SizedBox(height: 28),
           Row(
             children: [
               Container(
@@ -311,6 +337,20 @@ class _StudyHomeContent extends StatelessWidget {
         builder: (_) => StudyTaskSettingsPage(
           settingsController: settingsController,
           book: book,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openStudyPlanPage(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => StudyPlanSettingsPage(
+          settingsController: settingsController,
+          studyPlanController: controller,
+          wordKnowledgeRepository: wordKnowledgeRepository,
+          fsrsRepository: fsrsRepository,
+          wordDetailPageBuilder: wordDetailPageBuilder,
         ),
       ),
     );
@@ -642,10 +682,30 @@ class _StudyHomeContent extends StatelessWidget {
     );
   }
 
+  // ignore: unused_element
   Future<void> _openStudySession(
     BuildContext context,
     OfficialVocabularyBook book,
   ) async {
+    await _openStudySessionForSources(
+      context,
+      book,
+      sources: const <StudyTaskSource>{
+        StudyTaskSource.mustReview,
+        StudyTaskSource.normalReview,
+        StudyTaskSource.probeWord,
+        StudyTaskSource.newWord,
+      },
+      emptyMessage: '暂无今日任务',
+    );
+  }
+
+  Future<void> _openStudySessionForSources(
+    BuildContext context,
+    OfficialVocabularyBook book, {
+    required Set<StudyTaskSource> sources,
+    required String emptyMessage,
+  }) async {
     final now = DateTime.now().toUtc();
     final settings = settingsController.state.settings;
     final bookEntries = book.entries;
@@ -671,11 +731,13 @@ class _StudyHomeContent extends StatelessWidget {
       ),
     );
     final sessionEntries = <WordEntry>[
-      for (final item in plan.mixedQueue) item.entry,
+      for (final item in plan.mixedQueue)
+        if (sources.contains(item.source)) item.entry,
     ];
     final entrySourcesByWord = <String, StudyTaskSource>{
       for (final item in plan.mixedQueue)
-        WordKnowledgeRecord.normalizeWord(item.entry.word): item.source,
+        if (sources.contains(item.source))
+          WordKnowledgeRecord.normalizeWord(item.entry.word): item.source,
     };
     if (sessionEntries.isEmpty) {
       if (!context.mounted) {
@@ -683,7 +745,7 @@ class _StudyHomeContent extends StatelessWidget {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('暂无今日任务')));
+      ).showSnackBar(SnackBar(content: Text(emptyMessage)));
       return;
     }
 
@@ -703,205 +765,156 @@ class _StudyHomeContent extends StatelessWidget {
       ),
     );
   }
+
+  void _showPracticeComingSoon(BuildContext context, String label) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$label 即将上线')));
+  }
 }
 
 class _StudyHeaderCard extends StatelessWidget {
   const _StudyHeaderCard({
     required this.currentBook,
-    required this.newCount,
-    required this.reviewCount,
     required this.masteredCount,
     required this.remainingCount,
-    required this.onStart,
     required this.onChangeBook,
     required this.onOpenWordList,
+    required this.onOpenTaskSettings,
   });
 
   final OfficialVocabularyBook? currentBook;
-  final int newCount;
-  final int reviewCount;
   final int masteredCount;
   final int remainingCount;
-  final VoidCallback? onStart;
   final VoidCallback onChangeBook;
   final VoidCallback? onOpenWordList;
+  final VoidCallback? onOpenTaskSettings;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: currentBook == null
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '选择你的词汇表',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '系统提供四级、六级、考研、专四、专八、托福、雅思、SAT 等官方词汇表。',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: const Color(0xFF8B93A5),
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: onChangeBook,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF10C28E),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: const Text('选择词汇表'),
-                ),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _BookCover(
-                      title: currentBook!.title,
-                      coverKey: currentBook!.coverKey,
-                      size: 84,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  currentBook!.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              OutlinedButton.icon(
-                                onPressed: onOpenWordList,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF10C28E),
-                                  side: const BorderSide(
-                                    color: Color(0xFFD8F1E8),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                ),
-                                icon: const Icon(
-                                  Icons.list_alt_rounded,
-                                  size: 18,
-                                ),
-                                label: const Text(
-                                  '词表',
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          OutlinedButton(
-                            onPressed: onChangeBook,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF10C28E),
-                              side: const BorderSide(color: Color(0xFFD8F1E8)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            child: const Text(
-                              '更改',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: remainingCount == 0
-                        ? 0
-                        : masteredCount / remainingCount,
-                    minHeight: 8,
-                    backgroundColor: const Color(0xFFE9EBF0),
-                    color: const Color(0xFF10C28E),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '复习中 $reviewCount   已掌握 $masteredCount   未学 $remainingCount / ${currentBook!.wordCount}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF99A1B2),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Divider(height: 1, color: Color(0xFFF0F2F6)),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _MetricBlock(
-                        value: '$newCount',
-                        label: '待学习',
-                        valueKey: const ValueKey('study-header-new-count'),
-                      ),
-                    ),
-                    Expanded(
-                      child: _MetricBlock(
-                        value: '$reviewCount',
-                        label: '待复习',
-                        valueKey: const ValueKey('study-header-review-count'),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton(
-                        onPressed: onStart,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF10C28E),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 64),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                        child: const Text('开始', style: TextStyle(fontSize: 18)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    if (currentBook == null) {
+      return _ReferenceSectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '请选择词汇表',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1E1F24),
+              ),
             ),
+            const SizedBox(height: 12),
+            Text(
+              '系统提供四级、六级、考研、专四、专八、托福、雅思、SAT 等官方词汇表。',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: const Color(0xFF8A8E97),
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 18),
+            _PrimaryYellowButton(label: '选择词汇表', onTap: onChangeBook),
+          ],
+        ),
+      );
+    }
+
+    final learnedCount = (currentBook!.wordCount - remainingCount).clamp(
+      0,
+      currentBook!.wordCount,
+    );
+    final progress = currentBook!.wordCount == 0
+        ? 0.0
+        : learnedCount / currentBook!.wordCount;
+
+    return _ReferenceSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  currentBook!.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF202229),
+                    letterSpacing: -0.4,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _SectionIconButton(
+                icon: Icons.hexagon_outlined,
+                onTap: onOpenTaskSettings ?? onChangeBook,
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Text(
+                '正在学习',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 13,
+                  color: const Color(0xFF626771),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '已学 $learnedCount/${currentBook!.wordCount} 词',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 13,
+                  color: const Color(0xFF454850),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ReferenceProgressBar(progress: progress),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              if (onOpenWordList != null)
+                TextButton(
+                  onPressed: onOpenWordList,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    foregroundColor: const Color(0xFFBCC1C9),
+                  ),
+                  child: const Text(
+                    '列表刷词',
+                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w400),
+                  ),
+                ),
+              const Spacer(),
+              TextButton(
+                onPressed: onChangeBook,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor: const Color(0xFFBCC1C9),
+                ),
+                child: const Text(
+                  '更换词书',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w400),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -911,74 +924,142 @@ class _DailyTaskSettingsCard extends StatelessWidget {
     required this.dailyNewCount,
     required this.dailyReviewCount,
     required this.dailyReviewRatio,
+    required this.plannedNewCount,
+    required this.plannedReviewCount,
     required this.dailyPlanSummary,
-    required this.onTap,
+    required this.onOpenSettings,
+    required this.onStartNew,
+    required this.onStartReview,
   });
 
   final int dailyNewCount;
   final int dailyReviewCount;
   final int dailyReviewRatio;
+  final int plannedNewCount;
+  final int plannedReviewCount;
   final DailyStudyPlanSummary? dailyPlanSummary;
-  final VoidCallback onTap;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onStartNew;
+  final VoidCallback? onStartReview;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-          child: Row(
+    return _ReferenceSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '每日任务量',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '新词 $dailyNewCount   复习 $dailyReviewCount   比例 1:$dailyReviewRatio',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF99A1B2),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (dailyPlanSummary != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _planSummaryLabel(dailyPlanSummary!),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF657085),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (dailyPlanSummary!.reasonSummary.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          _planReasonLabel(dailyPlanSummary!),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF8A93A5),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ],
+              Text(
+                '今日计划',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1D1F24),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF99A1B2)),
+              const Spacer(),
+              if (onOpenSettings != null)
+                _SectionIconButton(
+                  icon: Icons.tune_rounded,
+                  onTap: onOpenSettings,
+                ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F8FB),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: dailyPlanSummary != null
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _planSummaryLabel(dailyPlanSummary!),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 12.5,
+                          color: const Color(0xFF5D626C),
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _planReasonLabel(dailyPlanSummary!),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11.5,
+                          color: const Color(0xFFA4A9B2),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    '新词 $dailyNewCount   复习 $dailyReviewCount   比例 1:$dailyReviewRatio',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 12.5,
+                      color: const Color(0xFF5D626C),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 98,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _PlanCounter(
+                    label: '新学',
+                    completed: 0,
+                    total: plannedNewCount,
+                    valueKey: const ValueKey('study-header-new-count'),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 64,
+                  color: const Color(0xFFE7EBF1),
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+                Expanded(
+                  child: _PlanCounter(
+                    label: '复习',
+                    completed: 0,
+                    total: plannedReviewCount,
+                    valueKey: const ValueKey('study-header-review-count'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _PrimaryYellowButton(
+                  label: '新学',
+                  onTap: onStartNew,
+                  height: 50,
+                  buttonKey: const ValueKey('daily-plan-start-new'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _PrimaryYellowButton(
+                  label: '复习',
+                  onTap: onStartReview,
+                  height: 50,
+                  buttonKey: const ValueKey('daily-plan-start-review'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1016,12 +1097,508 @@ class _DailyTaskSettingsCard extends StatelessWidget {
   }
 }
 
+class _StudyHeroBanner extends StatelessWidget {
+  const _StudyHeroBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox.shrink();
+  }
+}
+
+class _ReferenceSectionCard extends StatelessWidget {
+  const _ReferenceSectionCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PrimaryYellowButton extends StatelessWidget {
+  const _PrimaryYellowButton({
+    required this.label,
+    required this.onTap,
+    this.height = 56,
+    this.buttonKey,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final double height;
+  final Key? buttonKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: enabled
+              ? const <Color>[Color(0xFFFFD94D), Color(0xFFFFCD05)]
+              : const <Color>[Color(0xFFF0F1F4), Color(0xFFE3E5EA)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: enabled
+            ? const [
+                BoxShadow(
+                  color: Color(0x33FFC800),
+                  offset: Offset(0, 5),
+                  blurRadius: 0,
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: buttonKey,
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(15),
+          child: SizedBox(
+            height: height,
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: enabled
+                      ? const Color(0xFF1B1E25)
+                      : const Color(0xFF9297A1),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanCounter extends StatelessWidget {
+  const _PlanCounter({
+    required this.label,
+    required this.completed,
+    required this.total,
+    this.valueKey,
+  });
+
+  final String label;
+  final int completed;
+  final int total;
+  final Key? valueKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        RichText(
+          key: valueKey,
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: '$completed',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF1D1F24),
+                  letterSpacing: -1.2,
+                ),
+              ),
+              TextSpan(
+                text: ' / ',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontSize: 21,
+                  color: const Color(0xFFA4AAB4),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              TextSpan(
+                text: '$total',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontSize: 21,
+                  color: const Color(0xFFA4AAB4),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 11,
+            color: const Color(0xFF9DA3AE),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReferenceProgressBar extends StatelessWidget {
+  const _ReferenceProgressBar({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = progress.clamp(0.0, 1.0);
+    return SizedBox(
+      height: 12,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final trackWidth = constraints.maxWidth;
+          final thumbCenter = clamped == 0
+              ? 4.0
+              : (trackWidth * clamped).clamp(4.0, trackWidth - 4.0);
+          return Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8ECF3),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              Container(
+                width: trackWidth * clamped,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD8DDE6),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              Positioned(
+                left: thumbCenter - 4,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: Colors.black,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FreePracticeCard extends StatelessWidget {
+  const _FreePracticeCard({
+    required this.hasCurrentBook,
+    required this.onListPractice,
+    required this.onMemoryAidVideo,
+    required this.onPortableListening,
+    required this.onPhonics,
+    required this.onWordDictation,
+    required this.onListeningDrill,
+    required this.onShadowing,
+    required this.onDefinitionPractice,
+    required this.onSpellingPractice,
+  });
+
+  final bool hasCurrentBook;
+  final VoidCallback? onListPractice;
+  final VoidCallback onMemoryAidVideo;
+  final VoidCallback onPortableListening;
+  final VoidCallback onPhonics;
+  final VoidCallback onWordDictation;
+  final VoidCallback onListeningDrill;
+  final VoidCallback onShadowing;
+  final VoidCallback onDefinitionPractice;
+  final VoidCallback onSpellingPractice;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconItems = <({IconData icon, String label, VoidCallback? onTap})>[
+      (
+        icon: Icons.view_list_rounded,
+        label: '列表刷词',
+        onTap: hasCurrentBook ? onListPractice : null,
+      ),
+      (icon: Icons.videocam_outlined, label: '助记视频', onTap: onMemoryAidVideo),
+      (
+        icon: Icons.headphones_rounded,
+        label: '随身听',
+        onTap: onPortableListening,
+      ),
+      (icon: Icons.spellcheck_rounded, label: '自然拼读', onTap: onPhonics),
+      (icon: Icons.text_fields_rounded, label: '单词听写', onTap: onWordDictation),
+    ];
+
+    return _ReferenceSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '自由练习',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1D1F24),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _PracticeFeatureTile(
+                  color: const Color(0xFFE8F2FB),
+                  accentColor: const Color(0xFF5D75E6),
+                  icon: Icons.headphones_rounded,
+                  label: '听力训练',
+                  onTap: onListeningDrill,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _PracticeFeatureTile(
+                  color: const Color(0xFFF2EEFC),
+                  accentColor: const Color(0xFF8B56EA),
+                  icon: Icons.mic_none_rounded,
+                  label: '跟读对比',
+                  onTap: onShadowing,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _PracticeFeatureTile(
+                  color: const Color(0xFFFFF4DA),
+                  accentColor: const Color(0xFFFF9300),
+                  icon: Icons.menu_book_rounded,
+                  label: '释义巩固',
+                  onTap: onDefinitionPractice,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _PracticeFeatureTile(
+                  color: const Color(0xFFE4F6EF),
+                  accentColor: const Color(0xFF1DBD84),
+                  icon: Icons.edit_outlined,
+                  label: '拼写练习',
+                  onTap: onSpellingPractice,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (final item in iconItems)
+                Expanded(
+                  child: _PracticeIconShortcut(
+                    icon: item.icon,
+                    label: item.label,
+                    onTap: item.onTap,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PracticeFeatureTile extends StatelessWidget {
+  const _PracticeFeatureTile({
+    required this.color,
+    required this.accentColor,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final Color color;
+  final Color accentColor;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: 76,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 17, color: accentColor),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF23252B),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: accentColor.withValues(alpha: 0.7),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionIconButton extends StatelessWidget {
+  const _SectionIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF5F6F8),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 19, color: const Color(0xFF2B2D33)),
+        ),
+      ),
+    );
+  }
+}
+
+class _PracticeQuickIcon extends StatelessWidget {
+  const _PracticeQuickIcon({required this.icon, required this.enabled});
+
+  final IconData icon;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: enabled ? const Color(0xFFF5F7FB) : const Color(0xFFF0F2F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        icon,
+        size: 19,
+        color: enabled ? const Color(0xFF2C2E35) : const Color(0xFFB5BAC3),
+      ),
+    );
+  }
+}
+
+class _PracticeIconShortcut extends StatelessWidget {
+  const _PracticeIconShortcut({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _PracticeQuickIcon(icon: icon, enabled: enabled),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF44474F),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
 class _MetricBlock extends StatelessWidget {
-  const _MetricBlock({required this.value, required this.label, this.valueKey});
+  const _MetricBlock({required this.value, required this.label});
 
   final String value;
   final String label;
-  final Key? valueKey;
 
   @override
   Widget build(BuildContext context) {
@@ -1032,7 +1609,6 @@ class _MetricBlock extends StatelessWidget {
       children: [
         Text(
           value,
-          key: valueKey,
           style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -1059,6 +1635,7 @@ class _MetricBlock extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _WeekProgressCard extends StatelessWidget {
   const _WeekProgressCard({required this.days});
 
@@ -1359,6 +1936,7 @@ class _NotebookWordRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _StudyTopBar extends StatelessWidget {
   const _StudyTopBar({required this.onBack});
 
@@ -1574,10 +2152,10 @@ class _ImportVocabularyPageState extends State<_ImportVocabularyPage> {
               const SizedBox(height: 18),
               Material(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(20),
                 child: InkWell(
                   key: const ValueKey('import-notebook-selector'),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(20),
                   onTap: _openNotebookSelector,
                   child: Container(
                     width: double.infinity,
@@ -1620,7 +2198,7 @@ class _ImportVocabularyPageState extends State<_ImportVocabularyPage> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: TextField(
                           key: const ValueKey('import-words-input'),
@@ -1998,6 +2576,7 @@ class _ImportVocabularyPageState extends State<_ImportVocabularyPage> {
   }
 }
 
+// ignore: unused_element
 class _BookCover extends StatelessWidget {
   const _BookCover({
     required this.title,
@@ -2027,7 +2606,7 @@ class _BookCover extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

@@ -56,7 +56,12 @@ void main() {
       await tester.tap(find.text('IELTS乱序完整版').first);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('开始'));
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('daily-plan-start-new')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byKey(const ValueKey('daily-plan-start-new')));
       await tester.pumpAndSettle();
 
       expect(find.text('释义'), findsOneWidget);
@@ -110,7 +115,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('IELTS乱序完整版').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('开始'));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('daily-plan-start-new')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const ValueKey('daily-plan-start-new')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('释义'));

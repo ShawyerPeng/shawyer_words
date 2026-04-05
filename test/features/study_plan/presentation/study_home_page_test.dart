@@ -48,6 +48,8 @@ void main() {
       expect(find.text('导入词库包'), findsNothing);
       expect(find.text('导入词汇'), findsOneWidget);
       expect(find.text('选择词汇表'), findsOneWidget);
+      expect(find.text('今日计划'), findsNothing);
+      expect(find.text('自由练习'), findsNothing);
     },
   );
 
@@ -71,6 +73,11 @@ void main() {
     await tester.tap(find.text('背单词').last);
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('my-vocabulary-entry')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const ValueKey('my-vocabulary-entry')));
     await tester.pumpAndSettle();
 
@@ -110,6 +117,11 @@ void main() {
 
     await tester.tap(find.text('背单词').last);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('my-vocabulary-entry')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const ValueKey('my-vocabulary-entry')));
     await tester.pumpAndSettle();
 
@@ -349,7 +361,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('开始'));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('daily-plan-start-review')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const ValueKey('daily-plan-start-review')));
     await tester.pumpAndSettle();
 
     expect(find.text('must-review'), findsWidgets);
@@ -462,15 +479,21 @@ void main() {
 
     expect(
       tester
-          .widget<Text>(find.byKey(const ValueKey('study-header-new-count')))
-          .data,
-      '1',
+          .widget<RichText>(
+            find.byKey(const ValueKey('study-header-new-count')),
+          )
+          .text
+          .toPlainText(),
+      '0 / 1',
     );
     expect(
       tester
-          .widget<Text>(find.byKey(const ValueKey('study-header-review-count')))
-          .data,
-      '5',
+          .widget<RichText>(
+            find.byKey(const ValueKey('study-header-review-count')),
+          )
+          .text
+          .toPlainText(),
+      '0 / 5',
     );
     expect(find.text('复习优先 · 积压中等 · 复习 4 · 新词 1 · 抽查 1'), findsOneWidget);
     expect(find.text('当前按复习优先编排，先清理到期任务 · 复习积压中等，今天先压缩新词'), findsOneWidget);

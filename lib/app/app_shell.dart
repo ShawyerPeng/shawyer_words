@@ -6,8 +6,8 @@ import 'package:shawyer_words/features/home/presentation/home_dashboard_page.dar
 import 'package:shawyer_words/features/me/presentation/me_page.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
 import 'package:shawyer_words/features/search/presentation/search_page.dart';
+import 'package:shawyer_words/features/learning/presentation/learning_page.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
-import 'package:shawyer_words/features/learning/presentation/learning_home_page.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/presentation/study_home_page.dart';
@@ -80,7 +80,7 @@ class _AppShellState extends State<AppShell> {
         wordDetailPageBuilder: widget.wordDetailPageBuilder,
       ),
       HomeDashboardPage(onOpenMe: _openMePage, onOpenSearch: _openSearchPage),
-      LearningHomePage(),
+      const LearningPage(),
       MePage(
         settingsController: widget.settingsController,
         studyPlanController: widget.studyPlanController,

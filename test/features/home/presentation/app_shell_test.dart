@@ -12,7 +12,7 @@ import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 
 void main() {
-  testWidgets('shell shows reordered tabs and switches to me tab', (
+  testWidgets('shell keeps learning plaza and new learning page entry', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -35,13 +35,9 @@ void main() {
     await tester.tap(find.text('学习').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Popular'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Explore by Category'),
-      240,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Explore by Category'), findsOneWidget);
+    expect(find.text('选择一个模块，进入你的专项练习。'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('open-grammar-page')), findsOneWidget);
+    expect(find.text('语法'), findsWidgets);
 
     await tester.tap(find.text('我的').last);
     await tester.pumpAndSettle();
