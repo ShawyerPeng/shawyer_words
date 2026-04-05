@@ -106,7 +106,7 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
         final book = planState.currentBook;
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF3F5FA),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),

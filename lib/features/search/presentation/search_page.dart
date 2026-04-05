@@ -55,13 +55,15 @@ class _SearchPageState extends State<SearchPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: AnimatedBuilder(
           animation: widget.controller,
           builder: (context, _) {
             final state = widget.controller.state;
-            final showHistory = _contentType == SearchContentType.words && state.query.trim().isEmpty;
+            final showHistory =
+                _contentType == SearchContentType.words &&
+                state.query.trim().isEmpty;
 
             return Padding(
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
@@ -116,13 +118,17 @@ class _SearchPageState extends State<SearchPage> {
                       _SearchModeTab(
                         label: '单词',
                         selected: _contentType == SearchContentType.words,
-                        onTap: () => setState(() => _contentType = SearchContentType.words),
+                        onTap: () => setState(
+                          () => _contentType = SearchContentType.words,
+                        ),
                       ),
                       const SizedBox(width: 28),
                       _SearchModeTab(
                         label: '文章',
                         selected: _contentType == SearchContentType.articles,
-                        onTap: () => setState(() => _contentType = SearchContentType.articles),
+                        onTap: () => setState(
+                          () => _contentType = SearchContentType.articles,
+                        ),
                       ),
                     ],
                   ),
@@ -219,7 +225,9 @@ class _SearchModeTab extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.headlineSmall?.copyWith(
-              color: selected ? const Color(0xFF1B2030) : const Color(0xFF9DA5B8),
+              color: selected
+                  ? const Color(0xFF1B2030)
+                  : const Color(0xFF9DA5B8),
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -281,7 +289,10 @@ class _WordList extends StatelessWidget {
           visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
           minLeadingWidth: 20,
           horizontalTitleGap: 8,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 2,
+            vertical: 0,
+          ),
           leading: leadingBuilder(entry),
           title: Text(
             entry.word,

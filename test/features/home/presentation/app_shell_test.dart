@@ -32,6 +32,17 @@ void main() {
     expect(find.text('学习'), findsOneWidget);
     expect(find.text('我的'), findsWidgets);
 
+    await tester.tap(find.text('学习').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Popular'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Explore by Category'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Explore by Category'), findsOneWidget);
+
     await tester.tap(find.text('我的').last);
     await tester.pumpAndSettle();
 
@@ -43,7 +54,7 @@ void main() {
           widget is Positioned &&
           widget.left == 0 &&
           widget.right == 0 &&
-          widget.bottom == 12,
+          widget.bottom == 3,
     );
     expect(bottomNavPositioned, findsOneWidget);
   });

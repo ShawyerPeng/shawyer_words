@@ -1546,7 +1546,7 @@ class _ImportVocabularyPageState extends State<_ImportVocabularyPage> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),

@@ -7,7 +7,7 @@ import 'package:shawyer_words/features/me/presentation/me_page.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
 import 'package:shawyer_words/features/search/presentation/search_page.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
-import 'package:shawyer_words/features/shared/presentation/placeholder_section_page.dart';
+import 'package:shawyer_words/features/learning/presentation/learning_home_page.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/presentation/study_home_page.dart';
@@ -80,11 +80,7 @@ class _AppShellState extends State<AppShell> {
         wordDetailPageBuilder: widget.wordDetailPageBuilder,
       ),
       HomeDashboardPage(onOpenMe: _openMePage, onOpenSearch: _openSearchPage),
-      const PlaceholderSectionPage(
-        title: '学习',
-        description: '这里会放你的课程、训练营、学习记录和学习路径内容。',
-        icon: Icons.auto_stories_rounded,
-      ),
+      LearningHomePage(),
       MePage(
         settingsController: widget.settingsController,
         studyPlanController: widget.studyPlanController,
@@ -103,7 +99,7 @@ class _AppShellState extends State<AppShell> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           Positioned.fill(
@@ -112,7 +108,7 @@ class _AppShellState extends State<AppShell> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 12,
+            bottom: 3,
             child: SafeArea(
               top: false,
               child: Center(

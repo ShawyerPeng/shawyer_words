@@ -35,7 +35,8 @@ class _DictionaryLibraryManagementPageState
   int _paginationAnchorPage = 1;
 
   DictionaryLibraryController? get _controller => widget.controller;
-  DictionaryController? get _dictionaryController => widget.dictionaryController;
+  DictionaryController? get _dictionaryController =>
+      widget.dictionaryController;
 
   @override
   void initState() {
@@ -91,7 +92,9 @@ class _DictionaryLibraryManagementPageState
   Future<void> _requestImportSource() async {
     final dictionaryController = _dictionaryController;
     final pickDictionaryFile = widget.pickDictionaryFile;
-    if (dictionaryController == null || pickDictionaryFile == null || _isPicking) {
+    if (dictionaryController == null ||
+        pickDictionaryFile == null ||
+        _isPicking) {
       return;
     }
 
@@ -195,10 +198,7 @@ class _DictionaryLibraryManagementPageState
     }
 
     return AnimatedBuilder(
-      animation: Listenable.merge([
-        controller,
-        if (_dictionaryController != null) _dictionaryController!,
-      ]),
+      animation: Listenable.merge([controller, _dictionaryController]),
       builder: (context, _) {
         final importController = _dictionaryController;
         return Stack(
@@ -296,9 +296,9 @@ class _ManagementScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F5FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
@@ -702,7 +702,7 @@ class _SectionTitle extends StatelessWidget {
             ),
           ],
         ),
-        if (trailing != null) trailing!,
+        ?trailing,
       ],
     );
   }

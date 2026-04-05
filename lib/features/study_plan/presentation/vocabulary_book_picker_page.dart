@@ -33,7 +33,7 @@ class _VocabularyBookPickerPageState extends State<VocabularyBookPickerPage> {
       builder: (context, _) {
         final state = widget.controller.state;
         return Scaffold(
-          backgroundColor: const Color(0xFFF4F6FB),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: switch (state.status) {
               StudyPlanStatus.initial || StudyPlanStatus.loading =>

@@ -135,7 +135,7 @@ class _VocabularyWordListPageState extends State<VocabularyWordListPage> {
         );
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF3F5FA),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: DefaultTabController(
               length: tabs.length,

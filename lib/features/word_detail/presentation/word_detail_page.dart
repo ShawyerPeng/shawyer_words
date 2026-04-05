@@ -166,7 +166,7 @@ class _WordDetailPageState extends State<WordDetailPage> {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F5FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
