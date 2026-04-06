@@ -41,6 +41,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('学习计划'), findsOneWidget);
+    expect(find.text('查看词表'), findsOneWidget);
+    expect(find.text('复习任务上限'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('出词顺序'), 200);
+    expect(find.text('出词顺序'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('计划策略'), 200);
     expect(find.text('计划策略'), findsOneWidget);
     expect(find.text('均衡推进'), findsOneWidget);
 

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
 import 'package:shawyer_words/features/settings/domain/app_settings.dart';
@@ -106,16 +107,41 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
         final book = planState.currentBook;
 
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: const Color(0xFFF4F5F7),
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            backgroundColor: const Color(0xFFF4F5F7),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            toolbarHeight: 44,
+            centerTitle: true,
+            leadingWidth: 40,
+            leading: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              padding: EdgeInsets.zero,
+              splashRadius: 18,
+              icon: const Icon(
+                CupertinoIcons.back,
+                size: 24,
+                color: Color(0xFF1F2229),
+              ),
+            ),
+            title: const Text(
+              '学习计划',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1D24),
+              ),
+            ),
+          ),
           body: SafeArea(
+            top: false,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
               children: [
-                SettingsHeader(
-                  title: '学习计划',
-                  onBack: () => Navigator.of(context).pop(),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 6),
                 _CurrentBookCard(
                   book: book,
                   masteredCount: _masteredCount,
@@ -127,63 +153,50 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                   onReset: book == null ? null : () => _confirmReset(context),
                   onChangeBook: () => _openBookPicker(context),
                 ),
-                const SizedBox(height: 16),
-                SettingsGroup(
+                const SizedBox(height: 12),
+                _SettingsSectionCard(
                   title: '每日计划',
                   children: [
-                    SettingsActionTile(
+                    _SettingActionRow(
                       title: '新学单词量',
                       value: '${settings.dailyStudyTarget}',
                       onTap: () => _pickDailyNewCount(context, settings),
                     ),
-                    SettingsActionTile(
+                    _SettingActionRow(
                       title: '复习任务上限',
                       value: _reviewLimitLabel(
                         settings.dailyReviewLimitMultiplier,
                       ),
                       onTap: () => _pickReviewLimit(context, settings),
                     ),
-                    SettingsActionTile(
-                      title: '计划策略',
-                      value: _studyPlanningModeLabel(
-                        settings.studyPlanningMode,
-                      ),
-                      onTap: () => showSingleChoiceSheet<StudyPlanningMode>(
-                        context,
-                        title: '计划策略',
-                        currentValue: settings.studyPlanningMode,
-                        options: const <SettingsOption<StudyPlanningMode>>[
-                          SettingsOption(
-                            value: StudyPlanningMode.balanced,
-                            label: '均衡推进',
-                          ),
-                          SettingsOption(
-                            value: StudyPlanningMode.reviewFirst,
-                            label: '复习优先',
-                          ),
-                          SettingsOption(
-                            value: StudyPlanningMode.sprint,
-                            label: '冲刺突击',
-                          ),
-                        ],
-                        onSelected:
-                            widget.settingsController.updateStudyPlanningMode,
-                      ),
-                    ),
-                    SwitchListTile(
-                      title: const Text('智能复习'),
-                      subtitle: const Text('开启后可减少熟悉单词的复习次数'),
+                    _SettingSwitchRow(
+                      title: '智能复习',
+                      subtitle: '开启后可减少熟悉单词的复习次数',
                       value: settings.smartReviewEnabled,
                       onChanged:
                           widget.settingsController.updateSmartReviewEnabled,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                SettingsGroup(
+                if (book != null) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      _planEstimateLabel(book, settings.dailyStudyTarget),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF98A1AF),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                _SettingsSectionCard(
                   title: '学习设置',
                   children: [
-                    SettingsActionTile(
+                    _SettingActionRow(
                       title: '背单词模式',
                       value: _studyModeLabel(settings.studyMode),
                       onTap: () => showSingleChoiceSheet<StudyMode>(
@@ -205,13 +218,22 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                         onSelected: widget.settingsController.updateStudyMode,
                       ),
                     ),
-                    SwitchListTile(
-                      title: const Text('单词预览'),
-                      value: settings.wordPreviewEnabled,
-                      onChanged:
-                          widget.settingsController.updateWordPreviewEnabled,
+                    _SettingActionRow(
+                      title: '单词预览',
+                      value: _switchValueLabel(settings.wordPreviewEnabled),
+                      onTap: () => showSingleChoiceSheet<bool>(
+                        context,
+                        title: '单词预览',
+                        currentValue: settings.wordPreviewEnabled,
+                        options: const <SettingsOption<bool>>[
+                          SettingsOption(value: false, label: '关闭'),
+                          SettingsOption(value: true, label: '打开'),
+                        ],
+                        onSelected:
+                            widget.settingsController.updateWordPreviewEnabled,
+                      ),
                     ),
-                    SettingsActionTile(
+                    _SettingActionRow(
                       title: '出词方式',
                       value: _wordPickModeLabel(settings.wordPickMode),
                       onTap: () => showSingleChoiceSheet<WordPickMode>(
@@ -232,12 +254,12 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                             widget.settingsController.updateWordPickMode,
                       ),
                     ),
-                    SettingsActionTile(
-                      title: '单词学习顺序',
+                    _SettingActionRow(
+                      title: '出词顺序',
                       value: _newWordOrderLabel(settings.newWordOrder),
                       onTap: () => showSingleChoiceSheet<NewWordOrder>(
                         context,
-                        title: '单词学习顺序',
+                        title: '出词顺序',
                         currentValue: settings.newWordOrder,
                         options: const <SettingsOption<NewWordOrder>>[
                           SettingsOption(
@@ -265,12 +287,63 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                             widget.settingsController.updateNewWordOrder,
                       ),
                     ),
-                    SettingsActionTile(
-                      title: '单词复习顺序',
+                    _SettingActionRow(
+                      title: '熟词加速',
+                      value: _switchValueLabel(
+                        settings.knownWordAccelerationEnabled,
+                      ),
+                      onTap: () => showSingleChoiceSheet<bool>(
+                        context,
+                        title: '熟词加速',
+                        currentValue: settings.knownWordAccelerationEnabled,
+                        options: const <SettingsOption<bool>>[
+                          SettingsOption(value: false, label: '关闭'),
+                          SettingsOption(value: true, label: '打开'),
+                        ],
+                        onSelected: widget
+                            .settingsController
+                            .updateKnownWordAccelerationEnabled,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _SettingsSectionCard(
+                  title: '高级设置',
+                  children: [
+                    _SettingActionRow(
+                      title: '计划策略',
+                      value: _studyPlanningModeLabel(
+                        settings.studyPlanningMode,
+                      ),
+                      onTap: () => showSingleChoiceSheet<StudyPlanningMode>(
+                        context,
+                        title: '计划策略',
+                        currentValue: settings.studyPlanningMode,
+                        options: const <SettingsOption<StudyPlanningMode>>[
+                          SettingsOption(
+                            value: StudyPlanningMode.balanced,
+                            label: '均衡推进',
+                          ),
+                          SettingsOption(
+                            value: StudyPlanningMode.reviewFirst,
+                            label: '复习优先',
+                          ),
+                          SettingsOption(
+                            value: StudyPlanningMode.sprint,
+                            label: '冲刺突击',
+                          ),
+                        ],
+                        onSelected:
+                            widget.settingsController.updateStudyPlanningMode,
+                      ),
+                    ),
+                    _SettingActionRow(
+                      title: '复习顺序',
                       value: _reviewOrderLabel(settings.reviewOrder),
                       onTap: () => showSingleChoiceSheet<ReviewOrder>(
                         context,
-                        title: '单词复习顺序',
+                        title: '复习顺序',
                         currentValue: settings.reviewOrder,
                         options: const <SettingsOption<ReviewOrder>>[
                           SettingsOption(
@@ -289,25 +362,20 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                         onSelected: widget.settingsController.updateReviewOrder,
                       ),
                     ),
-                    SwitchListTile(
-                      title: const Text('熟词加速'),
-                      subtitle: const Text('开启后，单词首轮答对，本次学习中将不再重复出现'),
-                      value: settings.knownWordAccelerationEnabled,
-                      onChanged: widget
-                          .settingsController
-                          .updateKnownWordAccelerationEnabled,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SettingsGroup(
-                  title: '高级设置',
-                  children: [
-                    SwitchListTile(
-                      title: const Text('同时学习多本词书'),
-                      value: settings.multiBookEnabled,
-                      onChanged:
-                          widget.settingsController.updateMultiBookEnabled,
+                    _SettingActionRow(
+                      title: '同时学习多本词书',
+                      value: _switchValueLabel(settings.multiBookEnabled),
+                      onTap: () => showSingleChoiceSheet<bool>(
+                        context,
+                        title: '同时学习多本词书',
+                        currentValue: settings.multiBookEnabled,
+                        options: const <SettingsOption<bool>>[
+                          SettingsOption(value: false, label: '关闭'),
+                          SettingsOption(value: true, label: '打开'),
+                        ],
+                        onSelected:
+                            widget.settingsController.updateMultiBookEnabled,
+                      ),
                     ),
                   ],
                 ),
@@ -366,6 +434,18 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
       ReviewOrder.learnFirst => '优先学习',
       ReviewOrder.mixed => '混合模式',
     };
+  }
+
+  String _switchValueLabel(bool enabled) {
+    return enabled ? '打开' : '关闭';
+  }
+
+  String _planEstimateLabel(OfficialVocabularyBook book, int dailyTarget) {
+    if (dailyTarget <= 0 || book.wordCount <= 0) {
+      return '完成时间将在开始学习后生成';
+    }
+    final days = (book.wordCount / dailyTarget).ceil();
+    return '预计 $days 天后完成计划';
   }
 
   Future<void> _openWordList(
@@ -468,7 +548,10 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                 '新学单词量',
                 style: Theme.of(
                   context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ).textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -483,17 +566,19 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                       return Center(
                         child: Text(
                           '${options[index]}',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w800),
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
-                child: FilledButton(
+	              Padding(
+	                padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+	                child: FilledButton(
                   onPressed: () {
                     final selected = options[controller.selectedItem];
                     Navigator.of(context).pop(selected);
@@ -504,13 +589,13 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                  ),
-                  child: const Text('确定'),
-                ),
-              ),
-            ],
-          ),
-        );
+	                  ),
+	                  child: const Text('确定'),
+	                ),
+	              ),
+	            ],
+	          ),
+	        );
       },
     );
     if (!mounted || picked == null) {
@@ -554,7 +639,10 @@ class _StudyPlanSettingsPageState extends State<StudyPlanSettingsPage> {
                   '复习任务上限',
                   style: Theme.of(
                     context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  ).textTheme.titleMedium?.copyWith(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 for (final option in options)
@@ -606,17 +694,22 @@ class _CurrentBookCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    const coverWidth = 64.0;
+    const coverHeight = coverWidth * 1.4142;
     final wordCount = book?.wordCount ?? 0;
     final title = book?.title ?? '未选择词书';
     final subtitle = book?.subtitle ?? '';
-
-    final progress = wordCount <= 0
+    final showSubtitle =
+        subtitle.trim().isNotEmpty && subtitle.trim() != title.trim();
+    final learnedRatio = wordCount <= 0
+        ? 0.0
+        : (learnedCount / wordCount).clamp(0, 1).toDouble();
+    final masteredRatio = wordCount <= 0
         ? 0.0
         : (masteredCount / wordCount).clamp(0, 1).toDouble();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(15, 14, 15, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -625,87 +718,112 @@ class _CurrentBookCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _BookCover(
                 title: title,
                 coverKey: book?.coverKey ?? 'mint',
-                size: 66,
+                width: coverWidth,
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (subtitle.trim().isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                child: SizedBox(
+                  height: coverHeight,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
                       Text(
-                        subtitle,
-                        maxLines: 1,
+                        title,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF8B93A5),
-                          fontWeight: FontWeight.w600,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          height: 1.14,
+                          color: const Color(0xFF1A1C22),
                         ),
                       ),
+                      if (showSubtitle) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize: 13,
+                            color: const Color(0xFF9AA2AF),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      _BookProgressBar(
+                        learnedRatio: learnedRatio,
+                        masteredRatio: masteredRatio,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _ProgressLegend(
+                            color: const Color(0xFFFFC91C),
+                            label: '掌握 $masteredCount',
+                          ),
+                          const SizedBox(width: 12),
+                          _ProgressLegend(
+                            color: const Color(0xFFFFE08A),
+                            label: '已学 $learnedCount',
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$wordCount词',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontSize: 13,
+                              color: const Color(0xFF7F8793),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            '掌握 $masteredCount，已学 $learnedCount，共 $wordCount 词',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFF8B93A5),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
           const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: const Color(0xFFE9EBF0),
-              color: const Color(0xFF10C28E),
-            ),
-          ),
-          const SizedBox(height: 12),
           if (isLoading)
-            const LinearProgressIndicator(minHeight: 2)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 6),
+              child: LinearProgressIndicator(
+                minHeight: 2,
+                color: Color(0xFFFFC91C),
+                backgroundColor: Color(0xFFF0F1F4),
+              ),
+            )
           else
-            const SizedBox(height: 2),
-          const SizedBox(height: 10),
+            const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
-                child: _ActionButton(
-                  icon: Icons.list_alt_rounded,
+                child: _BookActionButton(
+                  icon: Icons.article_outlined,
                   label: '查看词表',
                   onTap: onOpenWordList,
                 ),
               ),
-              const SizedBox(width: 10),
+              const _ActionDivider(),
               Expanded(
-                child: _ActionButton(
+                child: _BookActionButton(
                   icon: Icons.restart_alt_rounded,
                   label: '重置词书',
                   onTap: onReset,
                 ),
               ),
-              const SizedBox(width: 10),
+              const _ActionDivider(),
               Expanded(
-                child: _ActionButton(
-                  icon: Icons.swap_horiz_rounded,
+                child: _BookActionButton(
+                  icon: Icons.autorenew_rounded,
                   label: '更换词书',
                   onTap: onChangeBook,
                 ),
@@ -718,8 +836,155 @@ class _CurrentBookCard extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
+class _SettingsSectionCard extends StatelessWidget {
+  const _SettingsSectionCard({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(15, 14, 15, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1C1E25),
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (var index = 0; index < children.length; index++) ...[
+            if (index > 0) const SizedBox(height: 8),
+            children[index],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingActionRow extends StatelessWidget {
+  const _SettingActionRow({
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String title;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        height: 44,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF20232A),
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontSize: 14,
+                color: const Color(0xFFA4ACB8),
+                fontWeight: FontWeight.w500,
+                letterSpacing: -0.1,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(
+              CupertinoIcons.chevron_right,
+              size: 16,
+              color: Color(0xFFB6BDC8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingSwitchRow extends StatelessWidget {
+  const _SettingSwitchRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.zero,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF20232A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 13,
+                    color: const Color(0xFF9FA7B5),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          CupertinoSwitch(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: const Color(0xFFFFD13F),
+            inactiveTrackColor: const Color(0xFFD9DEE6),
+            thumbColor: Colors.white,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookActionButton extends StatelessWidget {
+  const _BookActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -732,91 +997,363 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    return Material(
-      color: const Color(0xFFF3F5FA),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: enabled
-                    ? const Color(0xFF10C28E)
-                    : const Color(0xFFB0B7C8),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: enabled
-                        ? const Color(0xFF1B2030)
-                        : const Color(0xFFB0B7C8),
-                    fontWeight: FontWeight.w700,
-                  ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: 34,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 19,
+              color: enabled
+                  ? const Color(0xFF96A0AD)
+                  : const Color(0xFFD0D5DD),
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 13,
+                  color: enabled
+                      ? const Color(0xFF96A0AD)
+                      : const Color(0xFFD0D5DD),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
+class _ActionDivider extends StatelessWidget {
+  const _ActionDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 18,
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      color: const Color(0xFFE8EBF0),
+    );
+  }
+}
+
+class _BookProgressBar extends StatelessWidget {
+  const _BookProgressBar({
+    required this.learnedRatio,
+    required this.masteredRatio,
+  });
+
+  final double learnedRatio;
+  final double masteredRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: 8,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final learnedWidth = constraints.maxWidth * learnedRatio;
+            final masteredWidth = constraints.maxWidth * masteredRatio;
+            return Stack(
+              children: [
+                Container(color: const Color(0xFFF0F1F4)),
+                if (learnedWidth > 0)
+                  Container(
+                    width: learnedWidth,
+                    color: const Color(0xFFFFE08A),
+                  ),
+                if (masteredWidth > 0)
+                  Container(
+                    width: masteredWidth,
+                    color: const Color(0xFFFFC91C),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgressLegend extends StatelessWidget {
+  const _ProgressLegend({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontSize: 13,
+            color: const Color(0xFF7F8793),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BookBadgeSpec {
+  const _BookBadgeSpec({
+    required this.acronym,
+    required this.tag,
+    required this.backgroundColor,
+    required this.accentColor,
+  });
+
+  final String acronym;
+  final String tag;
+  final Color backgroundColor;
+  final Color accentColor;
+}
+
 class _BookCover extends StatelessWidget {
   const _BookCover({
     required this.title,
     required this.coverKey,
-    required this.size,
+    required this.width,
   });
 
   final String title;
   final String coverKey;
-  final double size;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
-    final gradient = switch (coverKey) {
-      'aurora' => const [Color(0xFFF6E6B5), Color(0xFFBFEFDB)],
-      'mint' => const [Color(0xFFD9F5EE), Color(0xFFECFBF3)],
-      'amber' => const [Color(0xFFFFE7BF), Color(0xFFFFF4D8)],
-      'violet' => const [Color(0xFFE7E0FF), Color(0xFFF5F1FF)],
-      'sky' => const [Color(0xFFDDF4FF), Color(0xFFF1FBFF)],
-      'rose' => const [Color(0xFFFFE0EA), Color(0xFFFFF2F6)],
-      'ocean' => const [Color(0xFFD8F0FF), Color(0xFFEFF9FF)],
-      'graphite' => const [Color(0xFFE8EAEE), Color(0xFFF5F6F8)],
-      _ => const [Color(0xFFD9F5EE), Color(0xFFECFBF3)],
-    };
+    final spec = _coverSpec(title, coverKey);
+    const a4Ratio = 1.4142;
+    final height = width * a4Ratio;
 
     return Container(
-      width: size,
-      height: size,
+      width: width,
+      height: height,
+      padding: const EdgeInsets.fromLTRB(8, 9, 8, 7),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
+        color: spec.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
       ),
-      alignment: Alignment.center,
-      child: Text(
-        title.replaceAll('乱序完整版', '').split(' ').first,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w800,
-          color: const Color(0xFF10C28E),
-        ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: width * 0.44,
+            top: height * 0.48,
+            child: Transform.rotate(
+              angle: -0.18,
+              child: Container(
+                width: width * 0.28,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: spec.accentColor.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -2,
+            bottom: -1,
+            child: SizedBox(
+              width: width * 0.72,
+              height: height * 0.42,
+              child: CustomPaint(
+                painter: _BookCoverPatternPainter(color: spec.accentColor),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    spec.acronym,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(
+                  spec.tag,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: spec.backgroundColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
+  }
+
+  _BookBadgeSpec _coverSpec(String title, String coverKey) {
+    final normalizedTitle = title.toUpperCase();
+    if (normalizedTitle.contains('专八')) {
+      return const _BookBadgeSpec(
+        acronym: 'TEM-8',
+        tag: '乱序版',
+        backgroundColor: Color(0xFF97DB00),
+        accentColor: Color(0xFF5FA800),
+      );
+    }
+    if (normalizedTitle.contains('专四')) {
+      return const _BookBadgeSpec(
+        acronym: 'TEM-4',
+        tag: '词汇书',
+        backgroundColor: Color(0xFF5DC671),
+        accentColor: Color(0xFF2F8E43),
+      );
+    }
+    if (normalizedTitle.contains('CET-6') || normalizedTitle.contains('六级')) {
+      return const _BookBadgeSpec(
+        acronym: 'CET-6',
+        tag: '词汇书',
+        backgroundColor: Color(0xFFFFB84E),
+        accentColor: Color(0xFFD78400),
+      );
+    }
+    if (normalizedTitle.contains('CET-4') || normalizedTitle.contains('四级')) {
+      return const _BookBadgeSpec(
+        acronym: 'CET-4',
+        tag: '词汇书',
+        backgroundColor: Color(0xFF47C2FF),
+        accentColor: Color(0xFF1587BE),
+      );
+    }
+    if (normalizedTitle.contains('IELTS')) {
+      return const _BookBadgeSpec(
+        acronym: 'IELTS',
+        tag: '乱序版',
+        backgroundColor: Color(0xFFFFC66D),
+        accentColor: Color(0xFFCE8D1E),
+      );
+    }
+    if (normalizedTitle.contains('TOEFL')) {
+      return const _BookBadgeSpec(
+        acronym: 'TOEFL',
+        tag: '词汇书',
+        backgroundColor: Color(0xFF6EC5FF),
+        accentColor: Color(0xFF2B81BC),
+      );
+    }
+    final fallback = switch (coverKey) {
+      'amber' => const _BookBadgeSpec(
+        acronym: 'WORDS',
+        tag: '词汇书',
+        backgroundColor: Color(0xFFFFC66D),
+        accentColor: Color(0xFFCE8D1E),
+      ),
+      'violet' => const _BookBadgeSpec(
+        acronym: 'WORDS',
+        tag: '词汇书',
+        backgroundColor: Color(0xFFAE9CFF),
+        accentColor: Color(0xFF6952D4),
+      ),
+      'sky' => const _BookBadgeSpec(
+        acronym: 'WORDS',
+        tag: '词汇书',
+        backgroundColor: Color(0xFF63C7FF),
+        accentColor: Color(0xFF228BC4),
+      ),
+      'rose' => const _BookBadgeSpec(
+        acronym: 'WORDS',
+        tag: '词汇书',
+        backgroundColor: Color(0xFFFF8AA7),
+        accentColor: Color(0xFFD84E73),
+      ),
+      'ocean' => const _BookBadgeSpec(
+        acronym: 'WORDS',
+        tag: '词汇书',
+        backgroundColor: Color(0xFF5DBBC4),
+        accentColor: Color(0xFF2C7F86),
+      ),
+      'graphite' => const _BookBadgeSpec(
+        acronym: 'WORDS',
+        tag: '词汇书',
+        backgroundColor: Color(0xFF93A1B2),
+        accentColor: Color(0xFF5F6B7A),
+      ),
+      _ => const _BookBadgeSpec(
+        acronym: 'WORDS',
+        tag: '词汇书',
+        backgroundColor: Color(0xFF97DB00),
+        accentColor: Color(0xFF5FA800),
+      ),
+    };
+    return fallback;
+  }
+}
+
+class _BookCoverPatternPainter extends CustomPainter {
+  const _BookCoverPatternPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.34)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      ..moveTo(size.width * 0.14, size.height * 0.22)
+      ..lineTo(size.width * 0.34, size.height * 0.42)
+      ..lineTo(size.width * 0.57, size.height * 0.12)
+      ..lineTo(size.width * 0.83, size.height * 0.41)
+      ..lineTo(size.width * 1.04, size.height * 0.2)
+      ..lineTo(size.width * 1.16, size.height * 0.36);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BookCoverPatternPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
