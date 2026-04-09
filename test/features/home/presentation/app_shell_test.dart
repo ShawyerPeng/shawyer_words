@@ -25,12 +25,18 @@ void main() {
         pickDictionaryFile: () async => null,
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(find.text('学习广场'), findsOneWidget);
     expect(find.text('背单词'), findsOneWidget);
     expect(find.text('知识库'), findsOneWidget);
     expect(find.text('学习'), findsOneWidget);
     expect(find.text('我的'), findsWidgets);
+    expect(find.byKey(const ValueKey('study-open-search-page')), findsOneWidget);
+
+    await tester.tap(find.text('知识库').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('学习广场'), findsOneWidget);
 
     await tester.tap(find.text('学习').last);
     await tester.pumpAndSettle();

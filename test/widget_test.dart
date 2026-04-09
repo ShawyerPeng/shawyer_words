@@ -5,10 +5,32 @@ import 'package:shawyer_words/main.dart';
 void main() {
   testWidgets('knowledge plaza and learning page are both reachable', (tester) async {
     await tester.pumpWidget(ShawyerWordsApp());
+    await tester.pumpAndSettle();
+
+    final studySearchBar = find.byKey(const ValueKey('study-open-search-page'));
+    expect(studySearchBar, findsOneWidget);
+    expect(find.text('知识库'), findsOneWidget);
+
+    final studyRect = tester.getRect(studySearchBar);
+
+    await tester.tap(studySearchBar);
+    await tester.pumpAndSettle();
+
+    final searchRect = tester.getRect(
+      find.byKey(const ValueKey('search-page-search-bar')),
+    );
+    expect(searchRect.left, studyRect.left);
+    expect(searchRect.top, studyRect.top);
+    expect(searchRect.width, studyRect.width);
+    expect(searchRect.height, studyRect.height);
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('知识库').last);
+    await tester.pumpAndSettle();
 
     expect(find.text('学习广场'), findsOneWidget);
-    expect(find.text('查单词或搜索文章'), findsOneWidget);
-    expect(find.text('知识库'), findsOneWidget);
 
     await tester.tap(find.text('学习'));
     await tester.pumpAndSettle();

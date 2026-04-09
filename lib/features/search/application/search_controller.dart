@@ -34,7 +34,7 @@ class SearchController extends ChangeNotifier {
   }) : _lookupRepository = lookupRepository,
        _historyRepository = historyRepository,
        _state = const SearchState() {
-    _restoreHistory();
+    _historyRestoreFuture = _restoreHistory();
   }
 
   final WordLookupRepository _lookupRepository;
@@ -42,6 +42,7 @@ class SearchController extends ChangeNotifier {
 
   SearchState _state;
   int _searchRequestId = 0;
+  Future<void>? _historyRestoreFuture;
 
   SearchState get state => _state;
 
@@ -51,16 +52,38 @@ class SearchController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateQuery(String query) async {
-    final requestId = ++_searchRequestId;
-    final normalized = query.trim();
-    final history = await _historyRepository.loadHistory();
+  Future<void> _ensureHistoryLoaded() {
+    return _historyRestoreFuture ??= _restoreHistory();
+  }
+
+  Future<void> prepareForOpen() async {
+    await _ensureHistoryLoaded();
+    if (_state.query.isEmpty && _state.results.isEmpty) {
+      return;
+    }
+    _searchRequestId++;
     _state = _state.copyWith(
-      query: query,
-      results: normalized.isEmpty ? const <WordEntry>[] : const <WordEntry>[],
-      history: history,
+      query: '',
+      results: const <WordEntry>[],
+      history: _state.history,
     );
     notifyListeners();
+  }
+
+  Future<void> updateQuery(String query) async {
+    await _ensureHistoryLoaded();
+    final requestId = ++_searchRequestId;
+    final normalized = query.trim();
+    final previousQuery = _state.query;
+    final previousResults = _state.results;
+    _state = _state.copyWith(
+      query: query,
+      results: const <WordEntry>[],
+      history: _state.history,
+    );
+    if (previousQuery != query || previousResults.isNotEmpty) {
+      notifyListeners();
+    }
 
     if (normalized.isEmpty) {
       return;
@@ -72,22 +95,23 @@ class SearchController extends ChangeNotifier {
     }
     final dedupedResults = _dedupeByHeadword(results);
 
-    final refreshedHistory = await _historyRepository.loadHistory();
     _state = _state.copyWith(
       query: query,
       results: dedupedResults,
-      history: refreshedHistory,
+      history: _state.history,
     );
     notifyListeners();
   }
 
   Future<void> selectEntry(WordEntry entry) async {
+    await _ensureHistoryLoaded();
     await _historyRepository.saveEntry(entry);
     _state = _state.copyWith(history: await _historyRepository.loadHistory());
     notifyListeners();
   }
 
   Future<void> clearHistory() async {
+    await _ensureHistoryLoaded();
     await _historyRepository.clear();
     _state = _state.copyWith(history: await _historyRepository.loadHistory());
     notifyListeners();

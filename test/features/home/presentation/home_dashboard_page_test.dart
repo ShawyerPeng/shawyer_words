@@ -11,7 +11,6 @@ void main() {
         home: Scaffold(
           body: HomeDashboardPage(
             onOpenMe: () {},
-            onOpenSearch: () {},
           ),
         ),
       ),
@@ -24,10 +23,7 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('open-me-page'))).height,
       50,
     );
-    expect(
-      tester.getSize(find.byKey(const ValueKey('open-search-page'))).height,
-      46,
-    );
+    expect(find.byKey(const ValueKey('open-search-page')), findsNothing);
     expect(
       tester.getSize(find.byKey(const ValueKey('home-coach-card'))).height,
       lessThan(150),

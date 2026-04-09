@@ -16,8 +16,6 @@ void main() {
               word: 'abandon',
               rawContent: '<div>fallback dictionary content</div>',
             ),
-            definitionVisible: false,
-            onRevealDefinition: _noop,
             onOpenDetail: _noop,
           ),
         ),
@@ -42,8 +40,6 @@ void main() {
               definition: 'quick and energetic',
               rawContent: '<div>brisk</div>',
             ),
-            definitionVisible: true,
-            onRevealDefinition: _noop,
             onOpenDetail: () => openedDetail = true,
           ),
         ),
@@ -54,6 +50,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(openedDetail, isTrue);
+  });
+
+  testWidgets('plays example audio when speaker is tapped', (tester) async {
+    var playedAudio = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WordCardView(
+            entry: const WordEntry(
+              id: 'audio-1',
+              word: 'abandon',
+              exampleSentence: 'They abandon the plan at sunrise.',
+              exampleAudioPath: '/media/english/examples/abandon.mp3',
+              rawContent: '<p>abandon</p>',
+            ),
+            onOpenDetail: _noop,
+            onPlayExampleAudio: () => playedAudio = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.volume_up_rounded));
+    await tester.pumpAndSettle();
+
+    expect(playedAudio, isTrue);
   });
 
   testWidgets('shows detail action even when definition text is missing', (
@@ -71,8 +94,6 @@ void main() {
               definition: '',
               rawContent: '<p>abandon</p>',
             ),
-            definitionVisible: true,
-            onRevealDefinition: _noop,
             onOpenDetail: () => openedDetail = true,
           ),
         ),

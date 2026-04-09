@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/study/application/study_session_controller.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
+import 'package:shawyer_words/features/study/presentation/study_session_widgets.dart';
+import 'package:shawyer_words/features/study/presentation/word_card_view.dart';
 import 'package:shawyer_words/features/study_plan/domain/study_task_source.dart';
 import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
-import 'package:shawyer_words/features/study/presentation/word_card_view.dart';
+import 'package:shawyer_words/features/word_detail/data/dictionary_audio_source_resolver.dart';
+import 'package:shawyer_words/features/word_detail/data/dictionary_sound_player.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
-class StudySessionPage extends StatelessWidget {
+class StudySessionPage extends StatefulWidget {
   const StudySessionPage({
     super.key,
     required this.controller,
@@ -42,134 +46,47 @@ class StudySessionPage extends StatelessWidget {
   final WordDetailPageBuilder wordDetailPageBuilder;
 
   @override
+  State<StudySessionPage> createState() => _StudySessionPageState();
+}
+
+class _StudySessionPageState extends State<StudySessionPage> {
+  bool _isSubmitting = false;
+  late final DictionarySoundPlayer _soundPlayer;
+
+  @override
+  void initState() {
+    super.initState();
+    _soundPlayer = DictionarySoundPlayer();
+  }
+
+  @override
+  void dispose() {
+    _soundPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: controller,
+      animation: widget.controller,
       builder: (context, _) {
-        final state = controller.state;
+        final state = widget.controller.state;
         final entry = state.currentEntry;
-        final taskSource = controller.currentTaskSource;
 
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: const Color(0xFFF4F6FA),
           body: SafeArea(
             child: entry == null
-                ? _CompletedView(
+                ? StudySessionCompletedView(
                     forgotCount: state.forgotCount,
                     fuzzyCount: state.fuzzyCount,
                     knownCount: state.knownCount,
                     masteredCount: state.masteredCount,
                   )
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 34),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.arrow_back_rounded),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${state.currentIndex}/${state.entries.length}',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    color: const Color(0xFF7F8799),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                            ),
-                            const Spacer(),
-                            const Icon(Icons.star_border_rounded, size: 34),
-                            const SizedBox(width: 16),
-                            TextButton.icon(
-                              onPressed: controller.markMastered,
-                              icon: const Icon(Icons.check_circle_rounded),
-                              label: const Text('标记熟悉'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFF2F80ED),
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            const Icon(Icons.more_vert_rounded, size: 34),
-                          ],
-                        ),
-                        const SizedBox(height: 34),
-                        if (taskSource != null) ...[
-                          _TaskSourceBadge(source: taskSource),
-                          const SizedBox(height: 14),
-                        ],
-                        Text(
-                          entry.word,
-                          style: Theme.of(context).textTheme.displayMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
-                              ),
-                        ),
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE6E8ED),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '美 ${entry.pronunciation ?? ''}'.trim(),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: WordCardView(
-                              entry: entry,
-                              definitionVisible: state.definitionRevealed,
-                              onRevealDefinition: controller.revealDefinition,
-                              onOpenDetail: () =>
-                                  _openWordDetail(context, entry),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _DecisionButton(
-                                    label: '忘记',
-                                    color: const Color(0xFFFF4A3D),
-                                    onTap: controller.markForgot,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _DecisionButton(
-                                    label: '模糊',
-                                    color: const Color(0xFFFF8A00),
-                                    onTap: controller.markFuzzy,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _DecisionButton(
-                                    label: '认识',
-                                    color: const Color(0xFF10C28E),
-                                    onTap: controller.markKnown,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                : _buildActiveSession(
+                    context: context,
+                    entry: entry,
+                    state: state,
                   ),
           ),
         );
@@ -177,150 +94,501 @@ class StudySessionPage extends StatelessWidget {
     );
   }
 
+  Widget _buildActiveSession({
+    required BuildContext context,
+    required WordEntry entry,
+    required StudySessionState state,
+  }) {
+    final totalCount = state.entries.length;
+    final currentStep = state.currentIndex + 1;
+    final progressValue = totalCount == 0 ? 0.0 : currentStep / totalCount;
+    final remainingCount = (totalCount - currentStep).clamp(0, totalCount);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxHeight < 640;
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            18,
+            isCompact ? 8 : 10,
+            18,
+            isCompact ? 14 : 20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              StudySessionHeader(
+                progressText: '$currentStep / $totalCount',
+                progressValue: progressValue,
+                progressPercent: (progressValue * 100).round(),
+                remainingCount: remainingCount,
+                compact: isCompact,
+                onBack: () => Navigator.of(context).pop(),
+                onMarkMastered: _isSubmitting
+                    ? null
+                    : () => _handleDecision(
+                        action: widget.controller.markMastered,
+                      ),
+              ),
+              SizedBox(height: isCompact ? 10 : 12),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: _SwipeableWordHeroCard(
+                  key: ValueKey<String>('study-session-hero-${entry.id}'),
+                  entry: entry,
+                  definitionRevealed: state.definitionRevealed,
+                  compact: isCompact,
+                  enabled: !_isSubmitting,
+                  onSwipeForgot: () => _handleDecision(
+                    action: widget.controller.markForgot,
+                  ),
+                  onSwipeKnown: () => _handleDecision(
+                    action: widget.controller.markKnown,
+                  ),
+                ),
+              ),
+              SizedBox(height: isCompact ? 14 : 18),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: SingleChildScrollView(
+                    key: ValueKey<String>(
+                      '${entry.id}-${state.definitionRevealed}',
+                    ),
+                    child: WordCardView(
+                      entry: entry,
+                      onOpenDetail: () => _openWordDetail(context, entry),
+                      onPlayExampleAudio: _buildPlayExampleAudio(entry),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: isCompact ? 8 : 12),
+              if (!isCompact)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 10),
+                  child: Text(
+                    '根据当前回忆状态选择判断，系统会据此安排下一次出现时间。',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF8A93A4),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: StudySessionDecisionButton(
+                      label: '忘记',
+                      subtitle: '完全想不起来',
+                      compact: isCompact,
+                      accentColor: const Color(0xFFF05A55),
+                      onTap: _isSubmitting
+                          ? null
+                          : () => _handleDecision(
+                              action: widget.controller.markForgot,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StudySessionDecisionButton(
+                      label: '模糊',
+                      subtitle: '有印象但不稳定',
+                      compact: isCompact,
+                      accentColor: const Color(0xFFFFA63D),
+                      onTap: _isSubmitting
+                          ? null
+                          : () => _handleDecision(
+                              action: widget.controller.markFuzzy,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StudySessionDecisionButton(
+                      label: '认识',
+                      subtitle: '能正确回忆出来',
+                      compact: isCompact,
+                      accentColor: const Color(0xFF18B984),
+                      onTap: _isSubmitting
+                          ? null
+                          : () => _handleDecision(
+                              action: widget.controller.markKnown,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleDecision({
+    required Future<void> Function() action,
+  }) async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+    HapticFeedback.selectionClick();
+    await action();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isSubmitting = false;
+    });
+  }
+
   Future<void> _openWordDetail(BuildContext context, WordEntry entry) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => wordDetailPageBuilder(entry.word, entry),
+        builder: (_) => widget.wordDetailPageBuilder(entry.word, entry),
       ),
     );
   }
-}
 
-class _TaskSourceBadge extends StatelessWidget {
-  const _TaskSourceBadge({required this.source});
+  VoidCallback? _buildPlayExampleAudio(WordEntry entry) {
+    final source = normalizeDictionaryAudioSource(entry.exampleAudioPath);
+    if (source == null) {
+      return null;
+    }
+    return () => _playExampleAudio(source);
+  }
 
-  final StudyTaskSource source;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = switch (source) {
-      StudyTaskSource.newWord => (
-        label: '新学',
-        background: const Color(0xFFEAF2FF),
-        foreground: const Color(0xFF2F80ED),
-      ),
-      StudyTaskSource.probeWord => (
-        label: '抽查',
-        background: const Color(0xFFF3E8FF),
-        foreground: const Color(0xFF8E44AD),
-      ),
-      StudyTaskSource.mustReview || StudyTaskSource.normalReview => (
-        label: '复习',
-        background: const Color(0xFFFFF1E6),
-        foreground: const Color(0xFFFF8A00),
-      ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: style.background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        style.label,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: style.foreground,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
+  Future<void> _playExampleAudio(String source) async {
+    try {
+      await _soundPlayer.playSource(source);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('例句音频播放失败')));
+    }
   }
 }
 
-class _DecisionButton extends StatelessWidget {
-  const _DecisionButton({
-    required this.label,
-    required this.color,
-    required this.onTap,
+class _SwipeableWordHeroCard extends StatefulWidget {
+  const _SwipeableWordHeroCard({
+    super.key,
+    required this.entry,
+    required this.definitionRevealed,
+    required this.compact,
+    required this.enabled,
+    required this.onSwipeForgot,
+    required this.onSwipeKnown,
   });
 
-  final String label;
-  final Color color;
-  final Future<void> Function() onTap;
+  final bool enabled;
+  final WordEntry entry;
+  final bool definitionRevealed;
+  final bool compact;
+  final Future<void> Function() onSwipeForgot;
+  final Future<void> Function() onSwipeKnown;
+
+  @override
+  State<_SwipeableWordHeroCard> createState() => _SwipeableWordHeroCardState();
+}
+
+class _SwipeableWordHeroCardState extends State<_SwipeableWordHeroCard> {
+  static const double _swipeThreshold = 120;
+  static const Duration _settleDuration = Duration(milliseconds: 220);
+  static const Duration _flyOutDuration = Duration(milliseconds: 180);
+
+  double _dragDx = 0;
+  Duration _animationDuration = Duration.zero;
+  bool _isAnimatingOut = false;
+
+  @override
+  void didUpdateWidget(covariant _SwipeableWordHeroCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry.id != widget.entry.id) {
+      _dragDx = 0;
+      _animationDuration = Duration.zero;
+      _isAnimatingOut = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
-      onPressed: onTap,
-      style: FilledButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF171D2D),
-        minimumSize: const Size(double.infinity, 72),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
-        elevation: 0,
-      ),
-      child: Column(
+    final direction = _directionForOffset(_dragDx);
+    final progress = (_dragDx.abs() / _swipeThreshold).clamp(0.0, 1.0);
+    final angle = (_dragDx / 560).clamp(-0.24, 0.24);
+
+    return GestureDetector(
+      key: const ValueKey('study-session-word-card'),
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: widget.enabled && !_isAnimatingOut
+          ? _handleDragUpdate
+          : null,
+      onHorizontalDragEnd: widget.enabled && !_isAnimatingOut
+          ? _handleDragEnd
+          : null,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    _SwipeHintBadge(
+                      label: '忘记',
+                      active: direction == _SwipeDirection.left,
+                      alignment: Alignment.centerLeft,
+                      color: const Color(0xFFF05A55),
+                      progress: direction == _SwipeDirection.left
+                          ? progress
+                          : 0,
+                    ),
+                    const Spacer(),
+                    _SwipeHintBadge(
+                      label: '认识',
+                      active: direction == _SwipeDirection.right,
+                      alignment: Alignment.centerRight,
+                      color: const Color(0xFF18B984),
+                      progress: direction == _SwipeDirection.right
+                          ? progress
+                          : 0,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 10),
-          Container(
-            width: 34,
-            height: 10,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(999),
+          AnimatedContainer(
+            duration: _animationDuration,
+            curve: Curves.easeOutCubic,
+            transform: Matrix4.identity()
+              ..translateByDouble(_dragDx, 0, 0, 1)
+              ..rotateZ(angle),
+            child: _WordHeroCard(
+              entry: widget.entry,
+              definitionRevealed: widget.definitionRevealed,
+              compact: widget.compact,
             ),
           ),
         ],
       ),
     );
   }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      _animationDuration = Duration.zero;
+      _dragDx += details.delta.dx;
+    });
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    final direction = _directionForOffset(_dragDx);
+    if (direction == null) {
+      setState(() {
+        _dragDx = 0;
+        _animationDuration = _settleDuration;
+      });
+      return;
+    }
+
+    _animateOut(direction);
+  }
+
+  _SwipeDirection? _directionForOffset(double dx) {
+    if (dx <= -_swipeThreshold) {
+      return _SwipeDirection.left;
+    }
+    if (dx >= _swipeThreshold) {
+      return _SwipeDirection.right;
+    }
+    return null;
+  }
+
+  Future<void> _animateOut(_SwipeDirection direction) async {
+    final width = MediaQuery.sizeOf(context).width;
+    setState(() {
+      _isAnimatingOut = true;
+      _animationDuration = _flyOutDuration;
+      _dragDx = direction == _SwipeDirection.left ? -width : width;
+    });
+    await Future<void>.delayed(_flyOutDuration);
+    if (!mounted) {
+      return;
+    }
+    if (direction == _SwipeDirection.left) {
+      await widget.onSwipeForgot();
+    } else {
+      await widget.onSwipeKnown();
+    }
+  }
 }
 
-class _CompletedView extends StatelessWidget {
-  const _CompletedView({
-    required this.forgotCount,
-    required this.fuzzyCount,
-    required this.knownCount,
-    required this.masteredCount,
+enum _SwipeDirection { left, right }
+
+class _SwipeHintBadge extends StatelessWidget {
+  const _SwipeHintBadge({
+    required this.label,
+    required this.active,
+    required this.alignment,
+    required this.color,
+    required this.progress,
   });
 
-  final int forgotCount;
-  final int fuzzyCount;
-  final int knownCount;
-  final int masteredCount;
+  final String label;
+  final bool active;
+  final Alignment alignment;
+  final Color color;
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '本轮学习完成',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+    final clampedProgress = progress.clamp(0.0, 1.0);
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 120),
+      opacity: active ? (0.24 + clampedProgress * 0.76).clamp(0.24, 1.0) : 0,
+      child: Align(
+        alignment: alignment,
+        child: Transform.scale(
+          scale: 0.92 + clampedProgress * 0.08,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: color.withValues(alpha: 0.45)),
             ),
-            const SizedBox(height: 16),
-            Text('已掌握 $masteredCount 个'),
-            const SizedBox(height: 8),
-            Text('认识 $knownCount 个'),
-            const SizedBox(height: 8),
-            Text('模糊 $fuzzyCount 个'),
-            const SizedBox(height: 8),
-            Text('忘记 $forgotCount 个'),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('返回'),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _WordHeroCard extends StatelessWidget {
+  const _WordHeroCard({
+    required this.entry,
+    required this.definitionRevealed,
+    required this.compact,
+  });
+
+  final WordEntry entry;
+  final bool definitionRevealed;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final guideText = definitionRevealed
+        ? '释义已经展开，可以继续结合例句判断是否真正记住。'
+        : '先尝试独立回忆释义，再点击下方释义卡查看答案。';
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(8, compact ? 6 : 10, 8, compact ? 2 : 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: definitionRevealed
+                    ? const Color(0xFFEAF8F2)
+                    : const Color(0xFFF1F4F7),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                definitionRevealed ? '已揭晓释义' : '先回忆释义',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: definitionRevealed
+                      ? const Color(0xFF0B8B63)
+                      : const Color(0xFF7A8598),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: compact ? 14 : 18),
+          Center(
+            child: Text(
+              entry.word,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.displayMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF171A20),
+                letterSpacing: 0.2,
+                height: 1.05,
+              ),
+            ),
+          ),
+          SizedBox(height: compact ? 10 : 12),
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if ((entry.pronunciation ?? '').trim().isNotEmpty)
+                  StudySessionInfoPill(
+                    label: '美 ${entry.pronunciation}'.trim(),
+                  ),
+                if ((entry.partOfSpeech ?? '').trim().isNotEmpty)
+                  StudySessionInfoPill(label: entry.partOfSpeech!.trim()),
+              ],
+            ),
+          ),
+          SizedBox(height: compact ? 12 : 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F9FC),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  definitionRevealed
+                      ? Icons.lightbulb_rounded
+                      : Icons.visibility_outlined,
+                  size: 18,
+                  color: definitionRevealed
+                      ? const Color(0xFF10C28E)
+                      : const Color(0xFF7A8598),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    guideText,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF7D8797),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

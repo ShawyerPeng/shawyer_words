@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/word_detail/application/word_detail_controller.dart';
+import 'package:shawyer_words/features/word_detail/data/dictionary_audio_source_resolver.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_sound_player.dart';
 import 'package:shawyer_words/features/word_detail/data/dictionary_sound_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/dictionary_entry_detail.dart';
@@ -2022,23 +2023,7 @@ class _WordDetailPageState extends State<WordDetailPage> {
   }
 
   String? _normalizeAudioSource(String? rawAudioPath) {
-    if (!_hasValue(rawAudioPath)) {
-      return null;
-    }
-    final normalized = rawAudioPath!.trim();
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-      return normalized;
-    }
-
-    // LexDB stores Longman media paths like /media/english/breProns/xxx.mp3.
-    if (normalized.startsWith('/media/') || normalized.startsWith('media/')) {
-      final mediaPath = normalized.startsWith('/')
-          ? normalized
-          : '/$normalized';
-      return 'https://www.ldoceonline.com$mediaPath';
-    }
-
-    return normalized;
+    return normalizeDictionaryAudioSource(rawAudioPath);
   }
 
   void _warmupPronunciations(WordDetail detail) {

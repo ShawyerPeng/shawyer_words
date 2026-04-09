@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/settings/application/settings_controller.dart';
 import 'package:shawyer_words/features/settings/presentation/study_plan_settings_page.dart';
+import 'package:shawyer_words/features/study/application/study_session_controller.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study/presentation/study_session_page.dart';
 import 'package:shawyer_words/features/study_plan/application/daily_task_planner.dart';
+import 'package:shawyer_words/features/study_plan/application/lexdb_study_entry_enricher.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/domain/daily_study_plan.dart';
 import 'package:shawyer_words/features/study_plan/domain/daily_study_plan_request.dart';
@@ -17,6 +19,8 @@ import 'package:shawyer_words/features/study_plan/presentation/study_task_settin
 import 'package:shawyer_words/features/study_plan/presentation/vocabulary_wordlist_page.dart';
 import 'package:shawyer_words/features/study_srs/domain/fsrs_models.dart';
 import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
+import 'package:shawyer_words/features/search/presentation/search_entry_bar.dart';
+import 'package:shawyer_words/features/word_detail/data/lexdb_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
@@ -32,6 +36,8 @@ class StudyHomePage extends StatefulWidget {
     required this.fsrsRepository,
     required this.studyRepository,
     required this.wordDetailPageBuilder,
+    this.lexDbRepository,
+    this.onOpenSearch,
     this.dailyTaskPlanner = const DailyTaskPlanner(),
   });
 
@@ -41,6 +47,8 @@ class StudyHomePage extends StatefulWidget {
   final FsrsRepository fsrsRepository;
   final StudyRepository studyRepository;
   final WordDetailPageBuilder wordDetailPageBuilder;
+  final LexDbWordDetailRepository? lexDbRepository;
+  final VoidCallback? onOpenSearch;
   final DailyTaskPlanner dailyTaskPlanner;
 
   @override
@@ -50,6 +58,7 @@ class StudyHomePage extends StatefulWidget {
 class _StudyHomePageState extends State<StudyHomePage> {
   DailyStudyPlanSummary? _dailyPlanSummary;
   int _planRequestToken = 0;
+  _ActiveStudySessionSnapshot? _activeSession;
 
   @override
   void initState() {
@@ -159,13 +168,26 @@ class _StudyHomePageState extends State<StudyHomePage> {
               fsrsRepository: widget.fsrsRepository,
               studyRepository: widget.studyRepository,
               wordDetailPageBuilder: widget.wordDetailPageBuilder,
+              lexDbRepository: widget.lexDbRepository,
+              onOpenSearch: widget.onOpenSearch,
               dailyTaskPlanner: widget.dailyTaskPlanner,
               dailyPlanSummary: _dailyPlanSummary,
+              activeSession: _activeSession,
+              onSessionChanged: _updateActiveSession,
             ),
           },
         );
       },
     );
+  }
+
+  void _updateActiveSession(_ActiveStudySessionSnapshot? snapshot) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _activeSession = snapshot;
+    });
   }
 }
 
@@ -177,8 +199,12 @@ class _StudyHomeContent extends StatelessWidget {
     required this.fsrsRepository,
     required this.studyRepository,
     required this.wordDetailPageBuilder,
+    required this.lexDbRepository,
+    required this.onOpenSearch,
     required this.dailyTaskPlanner,
     required this.dailyPlanSummary,
+    required this.activeSession,
+    required this.onSessionChanged,
   });
 
   final StudyPlanController controller;
@@ -187,8 +213,12 @@ class _StudyHomeContent extends StatelessWidget {
   final FsrsRepository fsrsRepository;
   final StudyRepository studyRepository;
   final WordDetailPageBuilder wordDetailPageBuilder;
+  final LexDbWordDetailRepository? lexDbRepository;
+  final VoidCallback? onOpenSearch;
   final DailyTaskPlanner dailyTaskPlanner;
   final DailyStudyPlanSummary? dailyPlanSummary;
+  final _ActiveStudySessionSnapshot? activeSession;
+  final ValueChanged<_ActiveStudySessionSnapshot?> onSessionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +239,8 @@ class _StudyHomeContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _StudySearchEntry(onTap: onOpenSearch),
+          const SizedBox(height: 12),
           const _StudyHeroBanner(),
           _StudyHeaderCard(
             currentBook: currentBook,
@@ -706,6 +738,16 @@ class _StudyHomeContent extends StatelessWidget {
     required Set<StudyTaskSource> sources,
     required String emptyMessage,
   }) async {
+    final currentSnapshot = activeSession;
+    if (currentSnapshot != null &&
+        currentSnapshot.matches(bookId: book.id, sources: sources)) {
+      await _pushStudySession(
+        context,
+        snapshot: currentSnapshot,
+      );
+      return;
+    }
+
     final now = DateTime.now().toUtc();
     final settings = settingsController.state.settings;
     final bookEntries = book.entries;
@@ -734,6 +776,7 @@ class _StudyHomeContent extends StatelessWidget {
       for (final item in plan.mixedQueue)
         if (sources.contains(item.source)) item.entry,
     ];
+    final enricher = LexDbStudyEntryEnricher(repository: lexDbRepository);
     final entrySourcesByWord = <String, StudyTaskSource>{
       for (final item in plan.mixedQueue)
         if (sources.contains(item.source))
@@ -749,27 +792,116 @@ class _StudyHomeContent extends StatelessWidget {
       return;
     }
 
+    final enrichedEntries = await enricher.enrichEntries(sessionEntries);
     if (!context.mounted) {
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => StudySessionPage.forBook(
-          entries: sessionEntries,
-          studyRepository: studyRepository,
-          fsrsRepository: fsrsRepository,
-          wordKnowledgeRepository: wordKnowledgeRepository,
-          wordDetailPageBuilder: wordDetailPageBuilder,
-          entrySourcesByWord: entrySourcesByWord,
-        ),
+    await _pushStudySession(
+      context,
+      snapshot: _ActiveStudySessionSnapshot(
+        bookId: book.id,
+        sources: sources,
+        entrySourcesByWord: entrySourcesByWord,
+        state: StudySessionState(entries: enrichedEntries),
       ),
     );
+  }
+
+  Future<void> _pushStudySession(
+    BuildContext context, {
+    required _ActiveStudySessionSnapshot snapshot,
+  }) async {
+    onSessionChanged(snapshot);
+    final controller = StudySessionController(
+      entries: snapshot.state.entries,
+      initialState: snapshot.state,
+      studyRepository: studyRepository,
+      fsrsRepository: fsrsRepository,
+      wordKnowledgeRepository: wordKnowledgeRepository,
+      entrySourcesByWord: snapshot.entrySourcesByWord,
+    );
+
+    void syncSnapshot() {
+      onSessionChanged(snapshot.copyWith(state: controller.state));
+    }
+
+    controller.addListener(syncSnapshot);
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => StudySessionPage(
+            controller: controller,
+            wordDetailPageBuilder: wordDetailPageBuilder,
+          ),
+        ),
+      );
+    } finally {
+      controller.removeListener(syncSnapshot);
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+    if (controller.state.isComplete) {
+      onSessionChanged(null);
+      return;
+    }
+    onSessionChanged(snapshot.copyWith(state: controller.state));
   }
 
   void _showPracticeComingSoon(BuildContext context, String label) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('$label 即将上线')));
+  }
+}
+
+class _ActiveStudySessionSnapshot {
+  const _ActiveStudySessionSnapshot({
+    required this.bookId,
+    required this.sources,
+    required this.entrySourcesByWord,
+    required this.state,
+  });
+
+  final String bookId;
+  final Set<StudyTaskSource> sources;
+  final Map<String, StudyTaskSource> entrySourcesByWord;
+  final StudySessionState state;
+
+  bool matches({
+    required String bookId,
+    required Set<StudyTaskSource> sources,
+  }) {
+    return this.bookId == bookId &&
+        this.sources.length == sources.length &&
+        this.sources.containsAll(sources);
+  }
+
+  _ActiveStudySessionSnapshot copyWith({
+    StudySessionState? state,
+  }) {
+    return _ActiveStudySessionSnapshot(
+      bookId: bookId,
+      sources: sources,
+      entrySourcesByWord: entrySourcesByWord,
+      state: state ?? this.state,
+    );
+  }
+}
+
+class _StudySearchEntry extends StatelessWidget {
+  const _StudySearchEntry({this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SearchEntryBar(
+      shellKey: const ValueKey('study-open-search-page'),
+      readOnly: true,
+      onTap: onTap,
+    );
   }
 }
 
@@ -894,7 +1026,10 @@ class _StudyHeaderCard extends StatelessWidget {
                   ),
                   child: const Text(
                     '列表刷词',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w400),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ),
               const Spacer(),

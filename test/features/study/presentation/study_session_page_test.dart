@@ -11,85 +11,87 @@ import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 
 void main() {
-  testWidgets(
-    'definition is hidden until revealed and known advances to next word',
-    (tester) async {
-      final navigatorKey = GlobalKey<NavigatorState>();
-      final studyRepository = _RecordingStudyRepository();
-      final fsrsRepository = _FakeFsrsRepository();
-      final wordKnowledgeRepository = _FakeWordKnowledgeRepository(
-        records: <String, WordKnowledgeRecord>{},
-      );
-      final controller = StudySessionController(
-        entries: const [
-          WordEntry(
-            id: '1',
-            word: 'aristocracy',
-            pronunciation: '/ˌærɪˈstɒkrəsi/',
-            definition: '贵族统治；贵族阶层',
-            exampleSentence:
-                'A new managerial elite was replacing the old aristocracy.',
-            rawContent: '<p>aristocracy</p>',
-          ),
-          WordEntry(
-            id: '2',
-            word: 'brisk',
-            pronunciation: '/brɪsk/',
-            definition: '轻快的；敏捷的',
-            exampleSentence: 'The morning air felt brisk.',
-            rawContent: '<p>brisk</p>',
-          ),
-        ],
-        studyRepository: studyRepository,
-        fsrsRepository: fsrsRepository,
-        wordKnowledgeRepository: wordKnowledgeRepository,
-      );
+  testWidgets('definition is shown directly and known advances to next word', (
+    tester,
+  ) async {
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final studyRepository = _RecordingStudyRepository();
+    final fsrsRepository = _FakeFsrsRepository();
+    final wordKnowledgeRepository = _FakeWordKnowledgeRepository(
+      records: <String, WordKnowledgeRecord>{},
+    );
+    final controller = StudySessionController(
+      entries: const [
+        WordEntry(
+          id: '1',
+          word: 'aristocracy',
+          pronunciation: '/ˌærɪˈstɒkrəsi/',
+          definition: '贵族统治；贵族阶层',
+          exampleSentence:
+              'A new managerial elite was replacing the old aristocracy.',
+          rawContent: '<p>aristocracy</p>',
+        ),
+        WordEntry(
+          id: '2',
+          word: 'brisk',
+          pronunciation: '/brɪsk/',
+          definition: '轻快的；敏捷的',
+          exampleSentence: 'The morning air felt brisk.',
+          rawContent: '<p>brisk</p>',
+        ),
+      ],
+      studyRepository: studyRepository,
+      fsrsRepository: fsrsRepository,
+      wordKnowledgeRepository: wordKnowledgeRepository,
+    );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          navigatorKey: navigatorKey,
-          home: StudySessionPage(
-            controller: controller,
-            wordDetailPageBuilder: (word, initialEntry) => Scaffold(
-              body: Center(
-                child: Text('detail:$word:${initialEntry?.word ?? ''}'),
-              ),
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        home: StudySessionPage(
+          controller: controller,
+          wordDetailPageBuilder: (word, initialEntry) => Scaffold(
+            body: Center(
+              child: Text('detail:$word:${initialEntry?.word ?? ''}'),
             ),
           ),
         ),
-      );
+      ),
+    );
 
-      expect(find.text('贵族统治；贵族阶层'), findsNothing);
-      expect(find.text('aristocracy'), findsOneWidget);
-      expect(find.text('标记熟悉'), findsOneWidget);
-      expect(find.text('忘记'), findsOneWidget);
-      expect(find.text('模糊'), findsOneWidget);
-      expect(find.text('查看完整释义'), findsNothing);
+    expect(find.text('贵族统治；贵族阶层'), findsOneWidget);
+    expect(find.text('aristocracy'), findsOneWidget);
+    expect(find.text('标记熟悉'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('study-session-progress-bar')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('study-session-word-card')),
+      findsOneWidget,
+    );
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('忘记'), findsWidgets);
+    expect(find.text('模糊'), findsOneWidget);
+    expect(find.text('查看完整释义'), findsOneWidget);
 
-      await tester.tap(find.text('释义'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('查看完整释义'));
+    await tester.tap(find.text('查看完整释义'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('贵族统治；贵族阶层'), findsOneWidget);
-      expect(find.text('查看完整释义'), findsOneWidget);
+    expect(find.text('detail:aristocracy:aristocracy'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('查看完整释义'));
-      await tester.tap(find.text('查看完整释义'));
-      await tester.pumpAndSettle();
+    navigatorKey.currentState!.pop();
+    await tester.pumpAndSettle();
 
-      expect(find.text('detail:aristocracy:aristocracy'), findsOneWidget);
+    await tester.tap(find.text('认识').last);
+    await tester.pumpAndSettle();
 
-      navigatorKey.currentState!.pop();
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('认识'));
-      await tester.pumpAndSettle();
-
-      expect(studyRepository.savedEntryIds, ['1']);
-      expect(studyRepository.savedDecisions, [StudyDecisionType.known]);
-      expect(find.text('brisk'), findsOneWidget);
-      expect(find.text('轻快的；敏捷的'), findsNothing);
-    },
-  );
+    expect(studyRepository.savedEntryIds, ['1']);
+    expect(studyRepository.savedDecisions, [StudyDecisionType.known]);
+    expect(find.text('brisk'), findsOneWidget);
+    expect(find.text('轻快的；敏捷的'), findsOneWidget);
+  });
 
   testWidgets('mark mastered from top action records mastered summary', (
     tester,
@@ -122,13 +124,15 @@ void main() {
     await tester.tap(find.text('标记熟悉'));
     await tester.pumpAndSettle();
 
+    expect(find.text('学习完成'), findsOneWidget);
+    expect(find.text('本轮掌握情况'), findsOneWidget);
     expect(find.text('已掌握 1 个'), findsOneWidget);
     expect(find.text('认识 0 个'), findsOneWidget);
     expect(find.text('模糊 0 个'), findsOneWidget);
     expect(find.text('忘记 0 个'), findsOneWidget);
   });
 
-  testWidgets('shows current task source badge for new review and probe', (
+  testWidgets('does not show task source badge for any task type', (
     tester,
   ) async {
     final controller = StudySessionController(
@@ -163,23 +167,132 @@ void main() {
       ),
     );
 
-    expect(find.text('新学'), findsOneWidget);
+    expect(find.text('新学'), findsNothing);
+    expect(find.text('新学任务'), findsNothing);
     expect(find.text('复习'), findsNothing);
     expect(find.text('抽查'), findsNothing);
 
-    await tester.tap(find.text('认识'));
+    await tester.tap(find.text('认识').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('复习'), findsOneWidget);
+    expect(find.text('复习'), findsNothing);
+    expect(find.text('复习任务'), findsNothing);
     expect(find.text('新学'), findsNothing);
     expect(find.text('抽查'), findsNothing);
+    expect(find.text('熟词抽查'), findsNothing);
 
-    await tester.tap(find.text('认识'));
+    await tester.tap(find.text('认识').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('抽查'), findsOneWidget);
+    expect(find.text('抽查'), findsNothing);
+    expect(find.text('熟词抽查'), findsNothing);
     expect(find.text('新学'), findsNothing);
     expect(find.text('复习'), findsNothing);
+    expect(find.text('复习任务'), findsNothing);
+  });
+
+  testWidgets('swiping card right records known and advances', (tester) async {
+    final studyRepository = _RecordingStudyRepository();
+    final controller = StudySessionController(
+      entries: const [
+        WordEntry(id: '1', word: 'alpha', rawContent: '<p>alpha</p>'),
+        WordEntry(id: '2', word: 'beta', rawContent: '<p>beta</p>'),
+      ],
+      studyRepository: studyRepository,
+      fsrsRepository: _FakeFsrsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(
+        records: <String, WordKnowledgeRecord>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StudySessionPage(
+          controller: controller,
+          wordDetailPageBuilder: (word, initialEntry) =>
+              const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('study-session-word-card')),
+      const Offset(320, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(studyRepository.savedEntryIds, ['1']);
+    expect(studyRepository.savedDecisions, [StudyDecisionType.known]);
+    expect(find.text('beta'), findsOneWidget);
+  });
+
+  testWidgets('swiping card left records forgot and advances', (tester) async {
+    final studyRepository = _RecordingStudyRepository();
+    final controller = StudySessionController(
+      entries: const [
+        WordEntry(id: '1', word: 'alpha', rawContent: '<p>alpha</p>'),
+        WordEntry(id: '2', word: 'beta', rawContent: '<p>beta</p>'),
+      ],
+      studyRepository: studyRepository,
+      fsrsRepository: _FakeFsrsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(
+        records: <String, WordKnowledgeRecord>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StudySessionPage(
+          controller: controller,
+          wordDetailPageBuilder: (word, initialEntry) =>
+              const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('study-session-word-card')),
+      const Offset(-320, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(studyRepository.savedEntryIds, ['1']);
+    expect(studyRepository.savedDecisions, [StudyDecisionType.forgot]);
+    expect(find.text('beta'), findsOneWidget);
+  });
+
+  testWidgets('short swipe snaps back without recording decision', (tester) async {
+    final studyRepository = _RecordingStudyRepository();
+    final controller = StudySessionController(
+      entries: const [
+        WordEntry(id: '1', word: 'alpha', rawContent: '<p>alpha</p>'),
+      ],
+      studyRepository: studyRepository,
+      fsrsRepository: _FakeFsrsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(
+        records: <String, WordKnowledgeRecord>{},
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StudySessionPage(
+          controller: controller,
+          wordDetailPageBuilder: (word, initialEntry) =>
+              const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('study-session-word-card')),
+      const Offset(60, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(studyRepository.savedEntryIds, isEmpty);
+    expect(studyRepository.savedDecisions, isEmpty);
+    expect(find.text('alpha'), findsOneWidget);
   });
 }
 

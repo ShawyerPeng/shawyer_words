@@ -13,16 +13,23 @@ import 'package:shawyer_words/features/settings/application/settings_controller.
 import 'package:shawyer_words/features/settings/domain/app_settings.dart';
 import 'package:shawyer_words/features/settings/domain/app_settings_repository.dart';
 import 'package:shawyer_words/features/study/domain/study_repository.dart';
+import 'package:shawyer_words/features/study_plan/application/daily_task_planner.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
+import 'package:shawyer_words/features/study_plan/domain/daily_study_plan.dart';
+import 'package:shawyer_words/features/study_plan/domain/daily_study_plan_request.dart';
 import 'package:shawyer_words/features/study_plan/data/in_memory_study_plan_repository.dart';
 import 'package:shawyer_words/features/study_plan/domain/official_vocabulary_book.dart';
 import 'package:shawyer_words/features/study_plan/domain/study_plan_models.dart';
 import 'package:shawyer_words/features/study_plan/domain/study_plan_repository.dart';
+import 'package:shawyer_words/features/study_plan/domain/study_task_source.dart';
 import 'package:shawyer_words/features/study_plan/presentation/study_home_page.dart';
 import 'package:shawyer_words/features/study_srs/domain/fsrs_models.dart';
 import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
+import 'package:shawyer_words/features/word_detail/data/lexdb_word_detail_repository.dart';
+import 'package:shawyer_words/features/word_detail/domain/lexdb_entry_detail.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_record.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
+import 'package:sqflite/sqlite_api.dart';
 
 void main() {
   testWidgets(
@@ -48,10 +55,133 @@ void main() {
       expect(find.text('导入词库包'), findsNothing);
       expect(find.text('导入词汇'), findsOneWidget);
       expect(find.text('选择词汇表'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('study-open-search-page')),
+        findsOneWidget,
+      );
       expect(find.text('今日计划'), findsNothing);
       expect(find.text('自由练习'), findsNothing);
     },
   );
+
+  testWidgets('study top search entry triggers callback', (tester) async {
+    var tapped = false;
+    final controller = StudyPlanController(
+      repository: InMemoryStudyPlanRepository.seeded(),
+    );
+    final settingsController = SettingsController(
+      repository: _FakeAppSettingsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+    );
+    await settingsController.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StudyHomePage(
+            controller: controller,
+            settingsController: settingsController,
+            wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+            fsrsRepository: _RecordingFsrsRepository(
+              cards: const <String, FsrsCard>{},
+            ),
+            studyRepository: _FakeStudyRepository(),
+            wordDetailPageBuilder: (word, initialEntry) =>
+                const Scaffold(body: SizedBox.shrink()),
+            onOpenSearch: () {
+              tapped = true;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('study-open-search-page')));
+    await tester.pump();
+
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('start study enriches session entries from lexdb in memory', (
+    tester,
+  ) async {
+    final book = OfficialVocabularyBook(
+      id: 'lexdb-book',
+      category: 'Exam',
+      title: 'LexDB Book',
+      subtitle: 'Subtitle',
+      wordCount: 1,
+      coverKey: 'lexdb-book',
+      entries: const <WordEntry>[
+        WordEntry(id: '1', word: 'abandon', rawContent: '<p>abandon</p>'),
+      ],
+    );
+    final studyPlanController = StudyPlanController(
+      repository: _SingleBookStudyPlanRepository(book: book),
+    );
+    final settingsController = SettingsController(
+      repository: _FakeAppSettingsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+    );
+    await settingsController.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StudyHomePage(
+            controller: studyPlanController,
+            settingsController: settingsController,
+            wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+            fsrsRepository: _RecordingFsrsRepository(
+              cards: const <String, FsrsCard>{},
+            ),
+            studyRepository: _FakeStudyRepository(),
+            wordDetailPageBuilder: (word, initialEntry) =>
+                const Scaffold(body: SizedBox.shrink()),
+            lexDbRepository: _FakeLexDbWordDetailRepository(
+              detailsByWord: <String, List<LexDbEntryDetail>>{
+                'abandon': const <LexDbEntryDetail>[
+                  LexDbEntryDetail(
+                    dictionaryId: 'lexdb',
+                    dictionaryName: 'LexDB',
+                    headword: 'abandon',
+                    pronunciations: <LexDbPronunciation>[
+                      LexDbPronunciation(variant: 'us', phonetic: '/əˈbændən/'),
+                    ],
+                    senses: <LexDbSense>[
+                      LexDbSense(
+                        id: 1,
+                        definition: 'to leave behind',
+                        definitionZh: '放弃；离弃',
+                        examplesBeforePatterns: <LexDbExample>[
+                          LexDbExample(
+                            text: 'They abandon the plan at sunrise.',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('daily-plan-start-new')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const ValueKey('daily-plan-start-new')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('美 /əˈbændən/'), findsOneWidget);
+    expect(find.text('放弃；离弃'), findsOneWidget);
+  });
 
   testWidgets('my vocabulary entry opens notebook picker and create dialog', (
     tester,
@@ -498,6 +628,91 @@ void main() {
     expect(find.text('复习优先 · 积压中等 · 复习 4 · 新词 1 · 抽查 1'), findsOneWidget);
     expect(find.text('当前按复习优先编排，先清理到期任务 · 复习积压中等，今天先压缩新词'), findsOneWidget);
   });
+
+  testWidgets('reopens unfinished study session instead of rebuilding queue', (
+    tester,
+  ) async {
+    final planner = _SwitchingDailyTaskPlanner(
+      initialPlan: _newWordPlan(<String>['alpha', 'beta', 'gamma']),
+    );
+    final book = OfficialVocabularyBook(
+      id: 'resume-book',
+      category: 'Exam',
+      title: 'Resume Book',
+      subtitle: 'Subtitle',
+      wordCount: 5,
+      coverKey: 'resume-book',
+      entries: const <WordEntry>[
+        WordEntry(id: 'alpha', word: 'alpha', rawContent: 'alpha'),
+        WordEntry(id: 'beta', word: 'beta', rawContent: 'beta'),
+        WordEntry(id: 'gamma', word: 'gamma', rawContent: 'gamma'),
+        WordEntry(id: 'delta', word: 'delta', rawContent: 'delta'),
+        WordEntry(id: 'epsilon', word: 'epsilon', rawContent: 'epsilon'),
+      ],
+    );
+    final studyPlanController = StudyPlanController(
+      repository: _SingleBookStudyPlanRepository(book: book),
+    );
+    final settingsController = SettingsController(
+      repository: _FakeAppSettingsRepository(),
+      wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+    );
+    await settingsController.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StudyHomePage(
+            controller: studyPlanController,
+            settingsController: settingsController,
+            wordKnowledgeRepository: _FakeWordKnowledgeRepository(),
+            fsrsRepository: _RecordingFsrsRepository(
+              cards: const <String, FsrsCard>{},
+            ),
+            studyRepository: _FakeStudyRepository(),
+            wordDetailPageBuilder: (word, initialEntry) =>
+                const Scaffold(body: SizedBox.shrink()),
+            dailyTaskPlanner: planner,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('daily-plan-start-new')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const ValueKey('daily-plan-start-new')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('alpha'), findsWidgets);
+    expect(find.text('0/3'), findsOneWidget);
+
+    await tester.tap(find.text('认识').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('beta'), findsWidgets);
+    expect(find.text('1/3'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded).first);
+    await tester.pumpAndSettle();
+
+    planner.currentPlan = _newWordPlan(<String>['delta', 'epsilon']);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('daily-plan-start-new')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const ValueKey('daily-plan-start-new')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('beta'), findsWidgets);
+    expect(find.text('1/3'), findsOneWidget);
+    expect(find.text('delta'), findsNothing);
+  });
 }
 
 class _FakeDictionaryRepository implements DictionaryRepository {
@@ -725,6 +940,70 @@ class _RecordingFsrsRepository implements FsrsRepository {
   @override
   Future<void> saveReview(FsrsRecordLogItem item) async {
     _cards[item.card.word] = item.card;
+  }
+}
+
+class _FakeLexDbWordDetailRepository extends LexDbWordDetailRepository {
+  _FakeLexDbWordDetailRepository({required this.detailsByWord})
+    : super(
+        databasePath: '/tmp/fake-lexdb.db',
+        dictionaryId: 'lexdb',
+        dictionaryName: 'LexDB',
+        databaseFactory: _UnusedDatabaseFactory(),
+      );
+
+  final Map<String, List<LexDbEntryDetail>> detailsByWord;
+
+  @override
+  Future<List<LexDbEntryDetail>> lookup(String word) async {
+    return detailsByWord[word.trim().toLowerCase()] ??
+        const <LexDbEntryDetail>[];
+  }
+}
+
+class _UnusedDatabaseFactory implements DatabaseFactory {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+DailyStudyPlan _newWordPlan(List<String> words) {
+  final queue = <PlannedStudyItem>[
+    for (final word in words)
+      PlannedStudyItem(
+        entry: _plannerEntry(word),
+        source: StudyTaskSource.newWord,
+        priorityScore: 0,
+        reasonTags: const <StudyTaskReason>[StudyTaskReason.freshWord],
+      ),
+  ];
+  return DailyStudyPlan(
+    mustReview: const <PlannedStudyItem>[],
+    normalReview: const <PlannedStudyItem>[],
+    newWords: queue,
+    probeWords: const <PlannedStudyItem>[],
+    deferredWords: const <PlannedStudyItem>[],
+    mixedQueue: queue,
+    summary: DailyStudyPlanSummary(
+      reviewCount: 0,
+      newCount: queue.length,
+      probeCount: 0,
+      deferredCount: 0,
+      backlogLevel: StudyBacklogLevel.none,
+      strategyLabel: 'balanced',
+      reasonSummary: const <String>[],
+    ),
+  );
+}
+
+class _SwitchingDailyTaskPlanner extends DailyTaskPlanner {
+  _SwitchingDailyTaskPlanner({required DailyStudyPlan initialPlan})
+    : currentPlan = initialPlan;
+
+  DailyStudyPlan currentPlan;
+
+  @override
+  DailyStudyPlan plan(DailyStudyPlanRequest request) {
+    return currentPlan;
   }
 }
 

@@ -58,8 +58,9 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('open-search-page')));
+      await tester.tap(find.byKey(const ValueKey('study-open-search-page')));
       await tester.pumpAndSettle();
 
       expect(find.text('历史查询'), findsOneWidget);

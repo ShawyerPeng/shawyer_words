@@ -104,6 +104,14 @@ class ShawyerWordsApp extends StatelessWidget {
       final siblingPath = '${File(lexDbPath).parent.path}/thing.db';
       return File(siblingPath).existsSync() ? siblingPath : null;
     }();
+    final resolvedLexDbRepository = lexDbPath == null
+        ? null
+        : LexDbWordDetailRepository(
+            databasePath: lexDbPath,
+            dictionaryId: lexDbDictionaryId,
+            dictionaryName: lexDbDictionaryName,
+            databaseFactory: lexDbDatabaseFactory ?? sqflite.databaseFactory,
+          );
     late final WordDetailPageBuilder resolvedWordDetailPageBuilder;
     resolvedWordDetailPageBuilder =
         wordDetailPageBuilder ??
@@ -117,15 +125,7 @@ class ShawyerWordsApp extends StatelessWidget {
                 libraryRepository: dictionaryLibraryRepository,
                 catalog: dictionaryCatalog,
               ),
-              lexDbRepository: lexDbPath == null
-                  ? null
-                  : LexDbWordDetailRepository(
-                      databasePath: lexDbPath,
-                      dictionaryId: lexDbDictionaryId,
-                      dictionaryName: lexDbDictionaryName,
-                      databaseFactory:
-                          lexDbDatabaseFactory ?? sqflite.databaseFactory,
-                    ),
+              lexDbRepository: resolvedLexDbRepository,
               wordGroupRepository: resolvedThingDbPath == null
                   ? null
                   : WordGroupRepository(
@@ -184,6 +184,7 @@ class ShawyerWordsApp extends StatelessWidget {
           studyPlanController ??
           StudyPlanController(repository: InMemoryStudyPlanRepository.seeded()),
       wordDetailPageBuilder: resolvedWordDetailPageBuilder,
+      lexDbRepository: resolvedLexDbRepository,
     );
   }
 
@@ -199,6 +200,7 @@ class ShawyerWordsApp extends StatelessWidget {
     required this.studyRepository,
     required this.studyPlanController,
     required this.wordDetailPageBuilder,
+    required this.lexDbRepository,
   });
 
   final DictionaryController dictionaryController;
@@ -211,6 +213,7 @@ class ShawyerWordsApp extends StatelessWidget {
   final StudyRepository studyRepository;
   final StudyPlanController studyPlanController;
   final WordDetailPageBuilder wordDetailPageBuilder;
+  final LexDbWordDetailRepository? lexDbRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +238,7 @@ class ShawyerWordsApp extends StatelessWidget {
             studyPlanController: studyPlanController,
             studyRepository: studyRepository,
             wordDetailPageBuilder: wordDetailPageBuilder,
+            lexDbRepository: lexDbRepository,
           ),
         );
       },

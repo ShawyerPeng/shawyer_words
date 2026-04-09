@@ -6,6 +6,7 @@ class WordEntry {
     this.partOfSpeech,
     this.definition,
     this.exampleSentence,
+    this.exampleAudioPath,
     required this.rawContent,
   });
 
@@ -15,5 +16,6 @@ class WordEntry {
   final String? partOfSpeech;
   final String? definition;
   final String? exampleSentence;
+  final String? exampleAudioPath;
   final String rawContent;
 }

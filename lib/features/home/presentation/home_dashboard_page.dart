@@ -4,11 +4,9 @@ class HomeDashboardPage extends StatelessWidget {
   const HomeDashboardPage({
     super.key,
     required this.onOpenMe,
-    required this.onOpenSearch,
   });
 
   final VoidCallback onOpenMe;
-  final VoidCallback onOpenSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -27,14 +25,7 @@ class HomeDashboardPage extends StatelessWidget {
                   icon: Icons.menu_rounded,
                   onTap: onOpenMe,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _SearchHeroButton(
-                    key: const ValueKey('open-search-page'),
-                    onTap: onOpenSearch,
-                  ),
-                ),
-                const SizedBox(width: 8),
+                const Spacer(),
                 const _CircleActionButton(
                   icon: Icons.card_giftcard_rounded,
                 ),
@@ -279,49 +270,6 @@ class _CircleActionButton extends StatelessWidget {
           height: 50,
           width: 50,
           child: Icon(icon, color: const Color(0xFF252938), size: 24),
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchHeroButton extends StatelessWidget {
-  const _SearchHeroButton({
-    super.key,
-    required this.onTap,
-  });
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(28),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          height: 46,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              const Icon(Icons.search_rounded, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                '查单词或搜索文章',
-                  maxLines: 1,
-                  overflow: TextOverflow.visible,
-                  softWrap: false,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFFC5CAD6),
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide SearchController;
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 import 'package:shawyer_words/features/dictionary/domain/word_entry.dart';
 import 'package:shawyer_words/features/search/application/search_controller.dart';
+import 'package:shawyer_words/features/search/presentation/search_entry_bar.dart';
 
 enum SearchContentType { words, articles }
 
@@ -21,18 +22,28 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   late final TextEditingController _textController;
+  final FocusNode _inputFocusNode = FocusNode();
   SearchContentType _contentType = SearchContentType.words;
 
   @override
   void initState() {
     super.initState();
     _textController = TextEditingController();
-    widget.controller.updateQuery('');
+    _textController.text = widget.controller.state.query;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await widget.controller.prepareForOpen();
+      if (!mounted) {
+        return;
+      }
+      _textController.text = widget.controller.state.query;
+      _inputFocusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _textController.dispose();
+    _inputFocusNode.dispose();
     super.dispose();
   }
 
@@ -66,51 +77,31 @@ class _SearchPageState extends State<SearchPage> {
                 state.query.trim().isEmpty;
 
             return Padding(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 16),
-                              const Icon(Icons.search_rounded, size: 34),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: TextField(
-                                  controller: _textController,
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: '查单词或搜索文章',
-                                  ),
-                                  onChanged: (value) {
-                                    widget.controller.updateQuery(value);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
+                  SearchEntryBar(
+                    shellKey: const ValueKey('search-page-search-bar'),
+                    controller: _textController,
+                    focusNode: _inputFocusNode,
+                    onChanged: (value) {
+                      widget.controller.updateQuery(value);
+                    },
+                    trailing: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        minimumSize: const Size(40, 28),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        '取消',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text(
-                          '取消',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 26),
                   Row(

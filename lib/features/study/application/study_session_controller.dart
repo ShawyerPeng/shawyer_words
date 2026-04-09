@@ -64,13 +64,14 @@ class StudySessionController extends ChangeNotifier {
     required StudyRepository studyRepository,
     required FsrsRepository fsrsRepository,
     required WordKnowledgeRepository wordKnowledgeRepository,
+    StudySessionState? initialState,
     Map<String, StudyTaskSource> entrySourcesByWord =
         const <String, StudyTaskSource>{},
   }) : _studyRepository = studyRepository,
        _fsrsRepository = fsrsRepository,
        _wordKnowledgeRepository = wordKnowledgeRepository,
        _entrySourcesByWord = entrySourcesByWord,
-       _state = StudySessionState(entries: entries);
+       _state = initialState ?? StudySessionState(entries: entries);
 
   final StudyRepository _studyRepository;
   final FsrsRepository _fsrsRepository;

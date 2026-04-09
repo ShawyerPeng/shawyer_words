@@ -12,6 +12,7 @@ import 'package:shawyer_words/features/study/domain/study_repository.dart';
 import 'package:shawyer_words/features/study_plan/application/study_plan_controller.dart';
 import 'package:shawyer_words/features/study_plan/presentation/study_home_page.dart';
 import 'package:shawyer_words/features/study_srs/domain/fsrs_repository.dart';
+import 'package:shawyer_words/features/word_detail/data/lexdb_word_detail_repository.dart';
 import 'package:shawyer_words/features/word_detail/domain/word_knowledge_repository.dart';
 import 'package:shawyer_words/features/word_detail/presentation/word_detail_page.dart';
 
@@ -30,6 +31,7 @@ class AppShell extends StatefulWidget {
     required this.studyPlanController,
     required this.studyRepository,
     required this.wordDetailPageBuilder,
+    this.lexDbRepository,
   });
 
   final DictionaryController dictionaryController;
@@ -42,13 +44,14 @@ class AppShell extends StatefulWidget {
   final StudyPlanController studyPlanController;
   final StudyRepository studyRepository;
   final WordDetailPageBuilder wordDetailPageBuilder;
+  final LexDbWordDetailRepository? lexDbRepository;
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
-  _ShellTab _selectedTab = _ShellTab.knowledgeBase;
+  _ShellTab _selectedTab = _ShellTab.vocabulary;
 
   void _openMePage() {
     setState(() {
@@ -57,7 +60,6 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _openSearchPage() async {
-    widget.searchController.updateQuery('');
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => SearchPage(
@@ -78,8 +80,10 @@ class _AppShellState extends State<AppShell> {
         fsrsRepository: widget.fsrsRepository,
         studyRepository: widget.studyRepository,
         wordDetailPageBuilder: widget.wordDetailPageBuilder,
+        lexDbRepository: widget.lexDbRepository,
+        onOpenSearch: _openSearchPage,
       ),
-      HomeDashboardPage(onOpenMe: _openMePage, onOpenSearch: _openSearchPage),
+      HomeDashboardPage(onOpenMe: _openMePage),
       const LearningPage(),
       MePage(
         settingsController: widget.settingsController,

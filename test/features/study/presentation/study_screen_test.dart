@@ -65,6 +65,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('释义'), findsOneWidget);
+      expect(find.text('to leave behind'), findsOneWidget);
       expect(find.text('忘记'), findsOneWidget);
       expect(find.text('模糊'), findsOneWidget);
       expect(find.text('认识'), findsOneWidget);
@@ -123,8 +124,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('daily-plan-start-new')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('释义'));
-    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('查看完整释义'));
     await tester.tap(find.text('查看完整释义'));
     await tester.pumpAndSettle();

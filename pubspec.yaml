@@ -59,6 +59,11 @@ dev_dependencies:
 dependency_overrides:
   path_provider_foundation: 2.4.1
 
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
